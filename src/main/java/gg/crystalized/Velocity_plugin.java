@@ -20,12 +20,11 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 
-@Plugin(id = "crystalized_plugin", name = "crystalized_plugin", version = "0.1.0-SNAPSHOT",
-        url = "https://crystalized.cc", description = "plugin for crystalized mc server", authors = {"crystalized_team"})
+@Plugin(id = "crystalized_plugin", name = "crystalized_plugin", version = "0.1.0-SNAPSHOT", url = "https://crystalized.cc", description = "plugin for crystalized mc server", authors = {
+		"crystalized_team" })
 public class Velocity_plugin {
 
 	private final ProxyServer server;
@@ -51,11 +50,12 @@ public class Velocity_plugin {
 
 		CommandManager commandManager = server.getCommandManager();
 
-		CommandMeta commandMeta = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
-		commandManager.register(commandMeta, new HubCommand(server.getServer("lobby").get()));
-	}
+		CommandMeta commandMetahub = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
+		commandManager.register(commandMetahub, new HubCommand(server.getServer("lobby").get()));
 
-	// TODO /rejoin
+		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
+		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector));
+	}
 
 	@Subscribe
 	public void onPluginMessageFromBackend(PluginMessageEvent event) {
@@ -67,17 +67,18 @@ public class Velocity_plugin {
 			return;
 		}
 
-    ByteArrayDataInput in = ByteStreams.newDataInput(event.getData());
+		ByteArrayDataInput in = ByteStreams.newDataInput(event.getData());
 		String message1 = in.readUTF();
 		if (!(message1.contains("Connect"))) {
 			return;
 		}
-		
+
 		String message2 = in.readUTF();
 		if (message2.contains("litestrike")) {
 			RegisteredServer reg_server = ls_selector.get_selected();
 			if (reg_server == null) {
-				backend.getPlayer().sendMessage(Component.text("No Litestrike Server is available atm.").color(NamedTextColor.RED));
+				backend.getPlayer()
+						.sendMessage(Component.text("No Litestrike Server is available atm.").color(NamedTextColor.RED));
 				return;
 			}
 			backend.getPlayer().createConnectionRequest(reg_server).connect();
@@ -98,6 +99,36 @@ class HubCommand implements SimpleCommand {
 	@Override
 	public void execute(Invocation invocation) {
 		((Player) invocation.source()).createConnectionRequest(lobby).connect();
+	}
+
+	@Override
+	public List<String> suggest(Invocation invocation) {
+		return List.of();
+	}
+
+	@Override
+	public boolean hasPermission(Invocation invocation) {
+		return true;
+	}
+}
+
+class RejoinCommand implements SimpleCommand {
+	private Litestrike_Selector ls_selector;
+
+	public RejoinCommand(Litestrike_Selector ls_selector) {
+		this.ls_selector = ls_selector;
+	}
+
+	@Override
+	public void execute(Invocation invocation) {
+		Player p = (Player) invocation.source();
+		RegisteredServer rs = ls_selector.get_server_of(p);
+		if (rs == null) {
+			p.sendMessage(Component.text("looks like your not part of any game"));
+		} else {
+			p.sendMessage(Component.text("Connecting your to ls_server"));
+			p.createConnectionRequest(rs).connect();
+		}
 	}
 
 	@Override
