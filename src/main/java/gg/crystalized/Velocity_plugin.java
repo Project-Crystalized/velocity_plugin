@@ -8,6 +8,7 @@ import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.Player;
@@ -30,6 +31,7 @@ public class Velocity_plugin {
 	private final ProxyServer server;
 	public final Logger logger;
 	public Litestrike_Selector ls_selector;
+	public BanCommand ban_command;
 
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
 	public static final MinecraftChannelIdentifier LS_CHANNEL = MinecraftChannelIdentifier.from("crystalized:litestrike");
@@ -55,6 +57,18 @@ public class Velocity_plugin {
 
 		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
 		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector));
+
+		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
+		ban_command = new BanCommand(logger, server);
+		commandManager.register(commandMetaban, ban_command);
+	}
+
+	@Subscribe
+	public void onPreConnect(PreLoginEvent e) {
+		if (ban_command.isBanned(e.getUniqueId())) {
+			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(Component.text("you are banned")));
+		}
+
 	}
 
 	@Subscribe
