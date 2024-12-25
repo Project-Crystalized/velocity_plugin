@@ -11,6 +11,7 @@ import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
@@ -32,6 +33,8 @@ public class Velocity_plugin {
 	public final Logger logger;
 	public Litestrike_Selector ls_selector;
 	public BanCommand ban_command;
+
+	public static boolean event_started = false;
 
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
 	public static final MinecraftChannelIdentifier LS_CHANNEL = MinecraftChannelIdentifier.from("crystalized:litestrike");
@@ -61,6 +64,9 @@ public class Velocity_plugin {
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
 		ban_command = new BanCommand(logger, server);
 		commandManager.register(commandMetaban, ban_command);
+
+		CommandMeta commandMetaEvent = commandManager.metaBuilder("start_event").plugin(this).build();
+		commandManager.register(commandMetaEvent, new StartEventCommand());
 	}
 
 	@Subscribe
@@ -89,10 +95,13 @@ public class Velocity_plugin {
 
 		String message2 = in.readUTF();
 		if (message2.contains("litestrike")) {
+			if (!event_started) {
+				backend.getPlayer().sendMessage(Component.text("The event hasnt started yet!").color(NamedTextColor.RED));
+				return;
+			}
 			RegisteredServer reg_server = ls_selector.get_selected();
 			if (reg_server == null) {
-				backend.getPlayer()
-						.sendMessage(Component.text("No Litestrike Server is available atm.").color(NamedTextColor.RED));
+				backend.getPlayer().sendMessage(ls_selector.get_servers_status());
 				return;
 			}
 			backend.getPlayer().createConnectionRequest(reg_server).connect();
@@ -100,6 +109,39 @@ public class Velocity_plugin {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend.getPlayer().createConnectionRequest(lobby).connect();
 		}
+	}
+
+	public static boolean is_admin(Player p) {
+		if (p.getUsername().equals("cooltexture")
+				|| p.getUsername().equals("Callum_Is_Bad")
+				|| p.getUsername().equals("LadyCat_")
+				|| p.getUsername().equals("___mira___")) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
+class StartEventCommand implements SimpleCommand {
+
+	@Override
+	public void execute(Invocation invocation) {
+		Velocity_plugin.event_started = !Velocity_plugin.event_started;
+	}
+
+	@Override
+	public List<String> suggest(Invocation invocation) {
+		return List.of();
+	}
+
+	@Override
+	public boolean hasPermission(Invocation invocation) {
+		if (invocation.source() instanceof ConsoleCommandSource) {
+			return true;
+		}
+		Player p = (Player) invocation.source();
+		return Velocity_plugin.is_admin(p);
 	}
 }
 

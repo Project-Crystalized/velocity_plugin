@@ -42,18 +42,10 @@ public class BanCommand implements SimpleCommand {
 				+ "banned_by			BLOB,"
 				+ "banned_for			TEXT"
 				+ ");";
-		// String create_ipban_table = "CREATE TABLE IF NOT EXISTS IPBanTable ("
-		// 		+ "banned_ip 			INTEGER UNIQUE,"
-		// 		+ "banned_since		INTEGER"
-		// 		+ "banned_until		INTEGER"
-		// 		+ "banned_by			BLOB"
-		// 		+ "banned_for			TEXT"
-		// 		+ ");";
 
 		try (Connection conn = DriverManager.getConnection(URL)) {
 			Statement stmt = conn.createStatement();
 			stmt.execute(create_ban_table);
-			// stmt.execute(create_ipban_table);
 		} catch (SQLException e) {
 			logger.warn(e.getMessage());
 			logger.warn("continueing without ban-database");
@@ -69,7 +61,7 @@ public class BanCommand implements SimpleCommand {
 
 			res.next();
 			int banned_until = res.getInt("banned_until");
-			int current_time = ((int)(System.currentTimeMillis() / 1000));
+			int current_time = ((int) (System.currentTimeMillis() / 1000));
 
 			if (banned_until == 0) {
 				return false;
@@ -98,13 +90,7 @@ public class BanCommand implements SimpleCommand {
 			return true;
 		}
 		Player p = (Player) invocation.source();
-		if (p.getUsername().equals("cooltexture")
-				|| p.getUsername().equals("Callum_Is_Bad")
-				|| p.getUsername().equals("LadyCat_")
-				|| p.getUsername().equals("___mira___")) {
-			return true;
-		}
-		return false;
+		return Velocity_plugin.is_admin(p);
 	}
 
 	@Override
@@ -123,13 +109,12 @@ public class BanCommand implements SimpleCommand {
 			invocation.source().sendMessage(Component.text("banning " + args[0] + " for " + duration + "seconds"));
 			player.disconnect(Component.text("you have been banned for: " + reason));
 
-
 			String save_ban = "INSERT INTO BanTable(banned_uuid, banned_since, banned_until, banned_by, banned_for) VALUES(?, unixepoch(), ?, ?, ?)";
 			try (Connection conn = DriverManager.getConnection(URL)) {
 				PreparedStatement game_stmt = conn.prepareStatement(save_ban);
 
 				game_stmt.setBytes(1, uuid_to_bytes(player));
-				game_stmt.setInt(2, ((int)(System.currentTimeMillis() / 1000)) + duration);
+				game_stmt.setInt(2, ((int) (System.currentTimeMillis() / 1000)) + duration);
 				if (invocation.source() instanceof Player) {
 					game_stmt.setBytes(3, uuid_to_bytes((Player) invocation.source()));
 				}
@@ -142,7 +127,8 @@ public class BanCommand implements SimpleCommand {
 
 		} catch (Exception e) {
 			invocation.source().sendMessage(Component.text("Error: " + e));
-			invocation.source().sendMessage(Component.text("usage: /ban <player_name> <duration, e.g. 1d, 5m> <reason>").color(NamedTextColor.RED));
+			invocation.source().sendMessage(
+					Component.text("usage: /ban <player_name> <duration, e.g. 1d, 5m> <reason>").color(NamedTextColor.RED));
 		}
 	}
 
@@ -164,7 +150,7 @@ public class BanCommand implements SimpleCommand {
 	private int get_duration(String s) {
 		int value = Integer.parseInt(s.replaceAll("[^0-9]", ""));
 		if (s.contains("d")) {
-			return value * 60* 60*24;
+			return value * 60 * 60 * 24;
 		}
 		if (s.contains("h")) {
 			return value * 60 * 60;
