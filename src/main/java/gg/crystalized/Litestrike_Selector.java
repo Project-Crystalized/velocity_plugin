@@ -27,15 +27,17 @@ public class Litestrike_Selector {
 	private LitestrikeServer selected_server;
 
 	private Logger logger;
+	private Velocity_plugin plugin;
 
 	public Litestrike_Selector(ProxyServer server, Logger logger, Velocity_plugin plugin) {
+		this.logger = logger;
+		this.plugin = plugin;
 		for (RegisteredServer rs : server.getAllServers()) {
 			if (rs.getServerInfo().getName().startsWith("litestrike")) {
 				ls_servers.add(new LitestrikeServer(rs, server, plugin));
 			}
 		}
 		select_new_server();
-		this.logger = logger;
 
 		// stop server when no player is connected to them
 		server.getScheduler().buildTask(plugin, () -> {
@@ -47,6 +49,17 @@ public class Litestrike_Selector {
 				}
 			}
 		}).repeat(22, TimeUnit.SECONDS).schedule();
+	}
+
+	public void send_player_litestrike(Player p) {
+		if (selected_server == null || selected_server.is_going() || !selected_server.is_online) {
+			select_new_server();
+		}
+		if (selected_server == null) {
+			p.sendMessage(get_servers_status());
+			return;
+		}
+		p.createConnectionRequest(selected_server.rs).connect();
 	}
 
 	public Component get_servers_status() {
@@ -74,16 +87,6 @@ public class Litestrike_Selector {
 		}
 	}
 
-	public RegisteredServer get_selected() {
-		if (selected_server == null || selected_server.is_going() || !selected_server.is_online) {
-			select_new_server();
-		}
-		if (selected_server == null) {
-			return null;
-		}
-		return selected_server.rs;
-	}
-
 	@Subscribe
 	public void onPluginMessageFromBackend(PluginMessageEvent event) {
 		if (!Velocity_plugin.LS_CHANNEL.equals(event.getIdentifier())) {
@@ -109,6 +112,7 @@ public class Litestrike_Selector {
 					}
 					lss.start_game(playing_players);
 					select_new_server();
+					plugin.que_system.clear_ls_que();
 				}
 			}
 		}

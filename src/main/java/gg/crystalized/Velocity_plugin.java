@@ -7,6 +7,9 @@ import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.command.CommandExecuteEvent;
+import com.velocitypowered.api.event.command.CommandExecuteEvent.CommandResult;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -32,9 +35,10 @@ public class Velocity_plugin {
 	private final ProxyServer server;
 	public final Logger logger;
 	public Litestrike_Selector ls_selector;
+	public QueSystem que_system;
 	public BanCommand ban_command;
 
-	public static boolean event_started = false;
+	public static boolean event_started = true;
 
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
 	public static final MinecraftChannelIdentifier LS_CHANNEL = MinecraftChannelIdentifier.from("crystalized:litestrike");
@@ -46,17 +50,33 @@ public class Velocity_plugin {
 	}
 
 	@Subscribe
+	public void onCommand(CommandExecuteEvent e) {
+		if (e.getCommand().startsWith("server")) {
+			e.setResult(CommandResult.denied());
+		}
+	}
+
+	@Subscribe
+	public void onDisconnect(DisconnectEvent e) {
+		que_system.remove_player_from_que(e.getPlayer());
+	}
+
+	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent event) {
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
 		server.getChannelRegistrar().register(LS_CHANNEL);
 
 		this.ls_selector = new Litestrike_Selector(server, logger, this);
+		this.que_system = new QueSystem(server, logger, this);
 		server.getEventManager().register(this, ls_selector);
 
 		CommandManager commandManager = server.getCommandManager();
 
 		CommandMeta commandMetahub = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
 		commandManager.register(commandMetahub, new HubCommand(server.getServer("lobby").get()));
+
+		CommandMeta commandMetaUnque = commandManager.metaBuilder("unque").plugin(this).build();
+		commandManager.register(commandMetaUnque, new UnqueCommand(this));
 
 		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
 		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector));
@@ -83,7 +103,7 @@ public class Velocity_plugin {
 			return;
 		}
 		event.setResult(PluginMessageEvent.ForwardResult.handled());
-		if (!(event.getSource() instanceof ServerConnection backend)) {
+		if (!(event.getSource() instanceof ServerConnection backend_conn)) {
 			return;
 		}
 
@@ -96,18 +116,14 @@ public class Velocity_plugin {
 		String message2 = in.readUTF();
 		if (message2.contains("litestrike")) {
 			if (!event_started) {
-				backend.getPlayer().sendMessage(Component.text("The event hasnt started yet!").color(NamedTextColor.RED));
+				backend_conn.getPlayer().sendMessage(Component.text("The event hasnt started yet!").color(NamedTextColor.RED));
 				return;
 			}
-			RegisteredServer reg_server = ls_selector.get_selected();
-			if (reg_server == null) {
-				backend.getPlayer().sendMessage(ls_selector.get_servers_status());
-				return;
-			}
-			backend.getPlayer().createConnectionRequest(reg_server).connect();
+			ls_selector.send_player_litestrike(backend_conn.getPlayer());
+			que_system.add_player_ls(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
-			backend.getPlayer().createConnectionRequest(lobby).connect();
+			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
 		}
 	}
 
