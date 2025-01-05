@@ -21,37 +21,37 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import org.slf4j.Logger;
 
-public class Litestrike_Selector {
+public class Knockoff_Selector {
 
-	private List<LitestrikeServer> ls_servers = new ArrayList<>();
-	private LitestrikeServer selected_server;
+	private List<KnockoffServer> ko_servers = new ArrayList<>();
+	private KnockoffServer selected_server;
 
 	private Logger logger;
 	private Velocity_plugin plugin;
 
-	public Litestrike_Selector(ProxyServer server, Logger logger, Velocity_plugin plugin) {
+	public Knockoff_Selector(ProxyServer server, Logger logger, Velocity_plugin plugin) {
 		this.logger = logger;
 		this.plugin = plugin;
 		for (RegisteredServer rs : server.getAllServers()) {
-			if (rs.getServerInfo().getName().startsWith("litestrike")) {
-				ls_servers.add(new LitestrikeServer(rs, server, plugin));
+			if (rs.getServerInfo().getName().startsWith("knockoff")) {
+				ko_servers.add(new KnockoffServer(rs, server, plugin));
 			}
 		}
 		select_new_server();
 
 		// stop server when no player is connected to them
 		server.getScheduler().buildTask(plugin, () -> {
-			for (LitestrikeServer lss : ls_servers) {
-				if (lss.rs.getPlayersConnected().size() == 0 && lss.is_going()) {
-					server.getScheduler().buildTask(plugin, () -> lss.game_end()).delay(21, TimeUnit.SECONDS)
+			for (KnockoffServer kos : ko_servers) {
+				if (kos.rs.getPlayersConnected().size() == 0 && kos.is_going()) {
+					server.getScheduler().buildTask(plugin, () -> kos.game_end()).delay(21, TimeUnit.SECONDS)
 							.schedule();
-					logger.info("Scheduled a litestrike server to become ready again");
+					logger.info("Scheduled a knockoff server to become ready again");
 				}
 			}
 		}).repeat(22, TimeUnit.SECONDS).schedule();
 	}
 
-	public void send_player_litestrike(Player p) {
+	public void send_player_knockoff(Player p) {
 		if (selected_server == null || selected_server.is_going() || !selected_server.is_online) {
 			select_new_server();
 		}
@@ -64,7 +64,7 @@ public class Litestrike_Selector {
 
 	@Subscribe
 	public void onPluginMessageFromBackend(PluginMessageEvent event) {
-		if (!Velocity_plugin.LS_CHANNEL.equals(event.getIdentifier())) {
+		if (!Velocity_plugin.KO_CHANNEL.equals(event.getIdentifier())) {
 			return;
 		}
 		event.setResult(PluginMessageEvent.ForwardResult.handled());
@@ -75,8 +75,8 @@ public class Litestrike_Selector {
 
 		String message = in.readUTF();
 		if (message.contains("start_game")) {
-			for (LitestrikeServer lss : ls_servers) {
-				if (lss.rs == backend.getServer()) {
+			for (KnockoffServer kos : ko_servers) {
+				if (kos.rs == backend.getServer()) {
 					Set<String> playing_players = new HashSet<>();
 					while (true) {
 						try {
@@ -85,9 +85,9 @@ public class Litestrike_Selector {
 							break;
 						}
 					}
-					lss.start_game(playing_players);
+					kos.start_game(playing_players);
 					select_new_server();
-					plugin.que_system.clear_ls_que();
+					plugin.que_system.clear_ko_que();
 				}
 			}
 		}
@@ -95,22 +95,22 @@ public class Litestrike_Selector {
 
 	private void select_new_server() {
 		selected_server = null;
-		Collections.shuffle(ls_servers);
-		for (LitestrikeServer lss : ls_servers) {
-			if (!lss.is_going() && lss.is_online) {
-				selected_server = lss;
+		Collections.shuffle(ko_servers);
+		for (KnockoffServer kos : ko_servers) {
+			if (!kos.is_going() && kos.is_online) {
+				selected_server = kos;
 				return;
 			}
 		}
 		if (logger != null) {
-			logger.error("No Litestrike servers are available at the Moment");
+			logger.error("No Knockoff servers are available at the Moment");
 		}
 	}
 
 	public RegisteredServer get_server_of(Player p) {
-		for (LitestrikeServer lss : ls_servers) {
-			if (lss.contains_player(p)) {
-				return lss.rs;
+		for (KnockoffServer kos : ko_servers) {
+			if (kos.contains_player(p)) {
+				return kos.rs;
 			}
 		}
 		return null;
@@ -121,18 +121,18 @@ public class Litestrike_Selector {
 		int online = 0;
 		int games_going = 0;
 
-		for (LitestrikeServer lss : ls_servers) {
+		for (KnockoffServer kos : ko_servers) {
 			registerd += 1;
-			if (lss.is_online) {
+			if (kos.is_online) {
 				online += 1;
 			}
-			if (lss.is_going()) {
+			if (kos.is_going()) {
 				games_going += 1;
 			}
 		}
 
 		if (online == games_going) {
-			return Component.text("Server status: No Litestrike Server is available atm. \n").color(NamedTextColor.RED)
+			return Component.text("Server status: No Knockoff Server is available atm. \n").color(NamedTextColor.RED)
 					.append(Component.text("Registered servers: " + registerd + " | Online servers: " + online
 							+ " | Ongoing games: " + games_going).color(NamedTextColor.WHITE));
 		} else {
@@ -143,13 +143,13 @@ public class Litestrike_Selector {
 
 }
 
-class LitestrikeServer {
+class KnockoffServer {
 	public final RegisteredServer rs;
 	private boolean is_game_going;
 	public boolean is_online;
 	private Set<String> playing_players;
 
-	public LitestrikeServer(RegisteredServer rs, ProxyServer server, Velocity_plugin plugin) {
+	public KnockoffServer(RegisteredServer rs, ProxyServer server, Velocity_plugin plugin) {
 		this.rs = rs;
 		is_game_going = false;
 		this.playing_players = null;

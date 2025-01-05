@@ -35,6 +35,7 @@ public class Velocity_plugin {
 	private final ProxyServer server;
 	public final Logger logger;
 	public Litestrike_Selector ls_selector;
+	public Knockoff_Selector ko_selector;
 	public QueSystem que_system;
 	public BanCommand ban_command;
 
@@ -42,6 +43,7 @@ public class Velocity_plugin {
 
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
 	public static final MinecraftChannelIdentifier LS_CHANNEL = MinecraftChannelIdentifier.from("crystalized:litestrike");
+	public static final MinecraftChannelIdentifier KO_CHANNEL = MinecraftChannelIdentifier.from("crystalized:knockoff");
 
 	@Inject
 	public Velocity_plugin(ProxyServer server, Logger logger) {
@@ -65,10 +67,14 @@ public class Velocity_plugin {
 	public void onProxyInitialization(ProxyInitializeEvent event) {
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
 		server.getChannelRegistrar().register(LS_CHANNEL);
+		server.getChannelRegistrar().register(KO_CHANNEL);
 
 		this.ls_selector = new Litestrike_Selector(server, logger, this);
-		this.que_system = new QueSystem(server, logger, this);
+		this.ko_selector = new Knockoff_Selector(server, logger, this);
 		server.getEventManager().register(this, ls_selector);
+		server.getEventManager().register(this, ko_selector);
+
+		this.que_system = new QueSystem(server, logger, this);
 
 		CommandManager commandManager = server.getCommandManager();
 
@@ -79,7 +85,7 @@ public class Velocity_plugin {
 		commandManager.register(commandMetaUnque, new UnqueCommand(this));
 
 		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
-		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector));
+		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector, ko_selector));
 
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
 		ban_command = new BanCommand(logger, server);
@@ -121,6 +127,9 @@ public class Velocity_plugin {
 			}
 			ls_selector.send_player_litestrike(backend_conn.getPlayer());
 			que_system.add_player_ls(backend_conn.getPlayer());
+		} else if (message2.contains("knockoff")) {
+			ko_selector.send_player_knockoff(backend_conn.getPlayer());
+			que_system.add_player_ko(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
@@ -186,19 +195,22 @@ class HubCommand implements SimpleCommand {
 
 class RejoinCommand implements SimpleCommand {
 	private Litestrike_Selector ls_selector;
+	private Knockoff_Selector ko_selector;
 
-	public RejoinCommand(Litestrike_Selector ls_selector) {
+	public RejoinCommand(Litestrike_Selector ls_selector, Knockoff_Selector ko_selector) {
 		this.ls_selector = ls_selector;
+		this.ko_selector = ko_selector;
 	}
 
 	@Override
 	public void execute(Invocation invocation) {
 		Player p = (Player) invocation.source();
 		RegisteredServer rs = ls_selector.get_server_of(p);
+		rs = ko_selector.get_server_of(p);
 		if (rs == null) {
 			p.sendMessage(Component.text("looks like your not part of any game"));
 		} else {
-			p.sendMessage(Component.text("Connecting your to ls_server"));
+			p.sendMessage(Component.text("Connecting your to previous_game"));
 			p.createConnectionRequest(rs).connect();
 		}
 	}
