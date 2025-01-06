@@ -36,7 +36,7 @@ public class QueSystem {
 			}
 			if (ko_que.size() >= KO_NEEDED_TO_START) {
 				for (Player p : ko_que) {
-					// TODO
+					plugin.ko_selector.send_player_knockoff(p);
 				}
 			}
 		}).repeat(1, TimeUnit.SECONDS).schedule();
