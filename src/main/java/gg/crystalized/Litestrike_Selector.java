@@ -19,6 +19,8 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
+import static net.kyori.adventure.text.Component.text;
+
 import org.slf4j.Logger;
 
 public class Litestrike_Selector {
@@ -59,7 +61,18 @@ public class Litestrike_Selector {
 			p.sendMessage(get_servers_status());
 			return;
 		}
-		p.createConnectionRequest(selected_server.rs).connect();
+		Party party = plugin.party_system.get_party_of(p);
+		if (party != null) {
+			if (!party.is_leader(p)) {
+				p.sendMessage(text("You must be the party leader to join the que"));
+				return;
+			}
+			for (Player player : party.members) {
+				player.createConnectionRequest(selected_server.rs).connect();
+			}
+		} else {
+			p.createConnectionRequest(selected_server.rs).connect();
+		}
 	}
 
 	@Subscribe
@@ -87,7 +100,7 @@ public class Litestrike_Selector {
 					}
 					lss.start_game(playing_players);
 					select_new_server();
-					plugin.que_system.clear_ls_que();
+					plugin.que_system.ls_que.clear();
 				}
 			}
 		}

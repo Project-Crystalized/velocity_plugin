@@ -38,6 +38,7 @@ public class Velocity_plugin {
 	public Knockoff_Selector ko_selector;
 	public QueSystem que_system;
 	public BanCommand ban_command;
+	public PartySystem party_system;
 
 	public static boolean event_started = true;
 
@@ -61,6 +62,7 @@ public class Velocity_plugin {
 	@Subscribe
 	public void onDisconnect(DisconnectEvent e) {
 		que_system.remove_player_from_que(e.getPlayer());
+		party_system.remove_player(e.getPlayer());
 	}
 
 	@Subscribe
@@ -74,6 +76,7 @@ public class Velocity_plugin {
 		server.getEventManager().register(this, ls_selector);
 		server.getEventManager().register(this, ko_selector);
 
+		this.party_system = new PartySystem(server, logger, this);
 		this.que_system = new QueSystem(server, logger, this);
 
 		CommandManager commandManager = server.getCommandManager();
@@ -121,15 +124,11 @@ public class Velocity_plugin {
 
 		String message2 = in.readUTF();
 		if (message2.contains("litestrike")) {
-			if (!event_started) {
-				backend_conn.getPlayer().sendMessage(Component.text("The event hasnt started yet!").color(NamedTextColor.RED));
-				return;
-			}
 			ls_selector.send_player_litestrike(backend_conn.getPlayer());
-			que_system.add_player_ls(backend_conn.getPlayer());
+			que_system.ls_que.add_player(backend_conn.getPlayer());
 		} else if (message2.contains("knockoff")) {
 			ko_selector.send_player_knockoff(backend_conn.getPlayer());
-			que_system.add_player_ko(backend_conn.getPlayer());
+			que_system.ko_que.add_player(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend_conn.getPlayer().createConnectionRequest(lobby).connect();

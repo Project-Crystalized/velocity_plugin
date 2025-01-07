@@ -21,6 +21,8 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import org.slf4j.Logger;
 
+import static net.kyori.adventure.text.Component.text;
+
 public class Knockoff_Selector {
 
 	private List<KnockoffServer> ko_servers = new ArrayList<>();
@@ -59,7 +61,18 @@ public class Knockoff_Selector {
 			p.sendMessage(get_servers_status());
 			return;
 		}
-		p.createConnectionRequest(selected_server.rs).connect();
+		Party party = plugin.party_system.get_party_of(p);
+		if (party != null) {
+			if (!party.is_leader(p)) {
+				p.sendMessage(text("You must be the party leader to join the que"));
+				return;
+			}
+			for (Player player : party.members) {
+				player.createConnectionRequest(selected_server.rs).connect();
+			}
+		} else {
+			p.createConnectionRequest(selected_server.rs).connect();
+		}
 	}
 
 	@Subscribe
@@ -87,7 +100,7 @@ public class Knockoff_Selector {
 					}
 					kos.start_game(playing_players);
 					select_new_server();
-					plugin.que_system.clear_ko_que();
+					plugin.que_system.ko_que.clear();
 				}
 			}
 		}
