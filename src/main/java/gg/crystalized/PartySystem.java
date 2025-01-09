@@ -29,7 +29,7 @@ public class PartySystem {
 	public PartySystem(ProxyServer server, Logger logger, Velocity_plugin plugin) {
 		CommandManager commandManager = server.getCommandManager();
 		CommandMeta commandMetaParty = commandManager.metaBuilder("party").aliases("p").plugin(plugin).build();
-		commandManager.register(commandMetaParty, new PartyCommand(this, logger, server));
+		commandManager.register(commandMetaParty, new PartyCommand(this, plugin, server));
 	}
 
 	public Party get_party_of(Player p) {
@@ -99,12 +99,12 @@ class Party {
 
 class PartyCommand implements SimpleCommand {
 	private PartySystem ps;
-	private Logger logger;
+	private Velocity_plugin plugin;
 	private ProxyServer server;
 
-	public PartyCommand(PartySystem ps, Logger logger, ProxyServer server) {
+	public PartyCommand(PartySystem ps, Velocity_plugin plugin, ProxyServer server) {
 		this.ps = ps;
-		this.logger = logger;
+		this.plugin = plugin;
 		this.server = server;
 	}
 
@@ -123,12 +123,14 @@ class PartyCommand implements SimpleCommand {
 		}
 		String[] args = invocation.arguments();
 		if (args.length == 0) {
-			return Arrays.asList("list", "invite", "inv", "add", "accept", "join", "kick", "remove", "disband", "leader", "transfer", "promote");
+			return Arrays.asList("list", "invite", "inv", "add", "accept", "join", "kick", "remove", "disband", "leader",
+					"transfer", "promote");
 		}
 		if (args[0].equals("list") || args[0].equals("leave") || args[0].equals("disband")) {
 			return List.of();
 		}
-		if (args[0].equals("kick") || args[0].equals("remove") || args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
+		if (args[0].equals("kick") || args[0].equals("remove") || args[0].equals("leader") || args[0].equals("transfer")
+				|| args[0].equals("promote")) {
 			Party party = ps.get_party_of((Player) invocation.source());
 			if (party == null) {
 				return List.of();
@@ -140,7 +142,8 @@ class PartyCommand implements SimpleCommand {
 				return party_list;
 			}
 		}
-		if (args[0].equals("invite") || (args[0].equals("inv")) || (args[0].equals("add")) || (args[0].equals("accept")) || (args[0].equals("join"))) {
+		if (args[0].equals("invite") || (args[0].equals("inv")) || (args[0].equals("add")) || (args[0].equals("accept"))
+				|| (args[0].equals("join"))) {
 			List<String> all_players = new ArrayList<>();
 			for (Player p : server.getAllPlayers()) {
 				all_players.add(p.getUsername());
@@ -148,7 +151,8 @@ class PartyCommand implements SimpleCommand {
 			return all_players;
 		}
 		if (args.length == 1) {
-			return Arrays.asList("list", "invite", "inv", "add", "accept", "join", "kick", "remove", "disband", "leader", "transfer", "promote");
+			return Arrays.asList("list", "invite", "inv", "add", "accept", "join", "kick", "remove", "disband", "leader",
+					"transfer", "promote");
 		}
 		return List.of();
 	}
@@ -208,6 +212,12 @@ class PartyCommand implements SimpleCommand {
 			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + args[1] + "\" has joined your Party"));
 			executer.sendMessage(text("You have joined the party of " + args[1]));
 			party_to_join.members.add(executer);
+			plugin.que_system.remove_player_from_que(executer);
+			if (plugin.que_system.ls_que.get_players().contains(party_to_join.members.get(0))) {
+				plugin.que_system.ls_que.add_player(executer);
+			} else if (plugin.que_system.ko_que.get_players().contains(party_to_join.members.get(0))) {
+				plugin.que_system.ko_que.add_player(executer);
+			}
 		} else if (args[0].equals("kick") || args[0].equals("remove")) {
 			if (args.length < 2) {
 				return;
@@ -233,6 +243,7 @@ class PartyCommand implements SimpleCommand {
 					.sendMessage(text("Kicking Player \"" + args[1] + "\" from your party"));
 			party.invited.remove(args[1]);
 			ps.remove_player(player_being_kicked);
+			plugin.que_system.remove_player_from_que(player_being_kicked);
 		} else if (args[0].equals("disband")) {
 			if (party == null) {
 				invocation.source().sendMessage(text("You are not in a party"));
@@ -244,12 +255,16 @@ class PartyCommand implements SimpleCommand {
 			}
 			Audience.audience(party.members).sendMessage(text("Your party has been disbanded"));
 			ps.partys.remove(party);
+			for (Player p : party.members) {
+				plugin.que_system.remove_player_from_que(p);
+			}
 		} else if (args[0].equals("leave")) {
 			if (party == null) {
 				invocation.source().sendMessage(text("You are not in a party"));
 				return;
 			}
 			ps.remove_player(executer);
+			plugin.que_system.remove_player_from_que(executer);
 		} else if (args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
 			if (args.length < 2) {
 				return;

@@ -22,6 +22,7 @@ public class QueSystem {
 	public GameQue ls_que;
 	public GameQue ko_que;
 	private Velocity_plugin plugin;
+	private ProxyServer server;
 
 	public static final int LS_NEEDED_TO_START = 6;
 	public static final int KO_NEEDED_TO_START = 4;
@@ -31,6 +32,7 @@ public class QueSystem {
 		this.plugin = plugin;
 		this.ls_que = new GameQue(this, plugin);
 		this.ko_que = new GameQue(this, plugin);
+		this.server = server;
 
 		server.getScheduler().buildTask(plugin, () -> {
 			show_action_bars();
@@ -50,13 +52,15 @@ public class QueSystem {
 	}
 
 	public void remove_player_from_que(Player p) {
-		ls_que.remove_player(p);
-		ko_que.remove_player(p);
+		if (ls_que.remove_player(p) || ko_que.remove_player(p)) {
+			p.createConnectionRequest(server.getServer("lobby").get()).connect();
+		}
 		Party party = plugin.party_system.get_party_of(p);
 		if (party != null) {
 			for (Player player : party.members) {
-				ls_que.remove_player(player);
-				ko_que.remove_player(player);
+				if (ls_que.remove_player(player) || ko_que.remove_player(player)) {
+					player.createConnectionRequest(server.getServer("lobby").get()).connect();
+				}
 			}
 		}
 	}
@@ -141,8 +145,8 @@ class GameQue {
 		}
 	}
 
-	public void remove_player(Player p) {
-		players.remove(p);
+	public boolean remove_player(Player p) {
+		return players.remove(p);
 	}
 
 	public void clear() {

@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.io.ByteArrayDataInput;
+import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
@@ -30,10 +31,12 @@ public class Litestrike_Selector {
 
 	private Logger logger;
 	private Velocity_plugin plugin;
+	private ProxyServer server;
 
 	public Litestrike_Selector(ProxyServer server, Logger logger, Velocity_plugin plugin) {
 		this.logger = logger;
 		this.plugin = plugin;
+		this.server = server;
 		for (RegisteredServer rs : server.getAllServers()) {
 			if (rs.getServerInfo().getName().startsWith("litestrike")) {
 				ls_servers.add(new LitestrikeServer(rs, server, plugin));
@@ -67,9 +70,18 @@ public class Litestrike_Selector {
 				p.sendMessage(text("You must be the party leader to join the que"));
 				return;
 			}
+			ByteArrayDataOutput out = ByteStreams.newDataOutput();
+			out.writeUTF("Party");
 			for (Player player : party.members) {
+				out.writeUTF(player.getUsername());
 				player.createConnectionRequest(selected_server.rs).connect();
 			}
+
+			// this is a ugly hack, the first party to join wouldnt be sent,
+			// becuase no player is connected yet, so we delay party info sending
+			server.getScheduler().buildTask(plugin, () -> {
+				selected_server.rs.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+			}).delay(2, TimeUnit.SECONDS).schedule();
 		} else {
 			p.createConnectionRequest(selected_server.rs).connect();
 		}

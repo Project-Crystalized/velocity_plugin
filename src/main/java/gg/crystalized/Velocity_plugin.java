@@ -88,7 +88,7 @@ public class Velocity_plugin {
 		commandManager.register(commandMetaUnque, new UnqueCommand(this));
 
 		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
-		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector, ko_selector));
+		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector));
 
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
 		ban_command = new BanCommand(logger, server);
@@ -194,22 +194,19 @@ class HubCommand implements SimpleCommand {
 
 class RejoinCommand implements SimpleCommand {
 	private Litestrike_Selector ls_selector;
-	private Knockoff_Selector ko_selector;
 
-	public RejoinCommand(Litestrike_Selector ls_selector, Knockoff_Selector ko_selector) {
+	public RejoinCommand(Litestrike_Selector ls_selector) {
 		this.ls_selector = ls_selector;
-		this.ko_selector = ko_selector;
 	}
 
 	@Override
 	public void execute(Invocation invocation) {
 		Player p = (Player) invocation.source();
 		RegisteredServer rs = ls_selector.get_server_of(p);
-		rs = ko_selector.get_server_of(p);
 		if (rs == null) {
 			p.sendMessage(Component.text("looks like your not part of any game"));
 		} else {
-			p.sendMessage(Component.text("Connecting your to previous_game"));
+			p.sendMessage(Component.text("Connecting your to previous game"));
 			p.createConnectionRequest(rs).connect();
 		}
 	}
