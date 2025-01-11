@@ -24,7 +24,7 @@ import static net.kyori.adventure.text.Component.text;
 
 import org.slf4j.Logger;
 
-public class Litestrike_Selector {
+public class Litestrike_Selector implements ServerSelector {
 
 	private List<LitestrikeServer> ls_servers = new ArrayList<>();
 	private LitestrikeServer selected_server;
@@ -56,7 +56,7 @@ public class Litestrike_Selector {
 		}).repeat(22, TimeUnit.SECONDS).schedule();
 	}
 
-	public void send_player_litestrike(Player p) {
+	public void send_player(Player p) {
 		if (selected_server == null || selected_server.is_going() || !selected_server.is_online) {
 			select_new_server();
 		}
@@ -70,20 +70,34 @@ public class Litestrike_Selector {
 				p.sendMessage(text("You must be the party leader to join the que"));
 				return;
 			}
-			ByteArrayDataOutput out = ByteStreams.newDataOutput();
-			out.writeUTF("Party");
 			for (Player player : party.members) {
-				out.writeUTF(player.getUsername());
 				player.createConnectionRequest(selected_server.rs).connect();
 			}
 
 			// this is a ugly hack, the first party to join wouldnt be sent,
 			// becuase no player is connected yet, so we delay party info sending
 			server.getScheduler().buildTask(plugin, () -> {
-				selected_server.rs.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+				selected_server.rs.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, party.update_message().toByteArray());
 			}).delay(2, TimeUnit.SECONDS).schedule();
 		} else {
 			p.createConnectionRequest(selected_server.rs).connect();
+		}
+	}
+
+	public void send_party_update(Party party) {
+		if (selected_server != null) {
+			selected_server.rs.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, party.update_message().toByteArray());
+		}
+	}
+
+	// this is weird, but removes the party from the game_server
+	// i should prolly write down how the game servers are supposed to react
+	public void send_remove_party(Party party) {
+		for (Player p : party.members) {
+			ByteArrayDataOutput out = ByteStreams.newDataOutput();
+			out.writeUTF("Party");
+			out.writeUTF(p.getUsername());
+			selected_server.rs.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
 		}
 	}
 

@@ -22,7 +22,6 @@ import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.List;
 
@@ -124,10 +123,10 @@ public class Velocity_plugin {
 
 		String message2 = in.readUTF();
 		if (message2.contains("litestrike")) {
-			ls_selector.send_player_litestrike(backend_conn.getPlayer());
+			ls_selector.send_player(backend_conn.getPlayer());
 			que_system.ls_que.add_player(backend_conn.getPlayer());
 		} else if (message2.contains("knockoff")) {
-			ko_selector.send_player_knockoff(backend_conn.getPlayer());
+			ko_selector.send_player(backend_conn.getPlayer());
 			que_system.ko_que.add_player(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
@@ -220,4 +219,8 @@ class RejoinCommand implements SimpleCommand {
 	public boolean hasPermission(Invocation invocation) {
 		return true;
 	}
+}
+
+interface ServerSelector {
+	public void send_player(Player p);
 }

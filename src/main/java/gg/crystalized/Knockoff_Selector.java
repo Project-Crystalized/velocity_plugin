@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 
 import static net.kyori.adventure.text.Component.text;
 
-public class Knockoff_Selector {
+public class Knockoff_Selector implements ServerSelector {
 
 	private List<KnockoffServer> ko_servers = new ArrayList<>();
 	private KnockoffServer selected_server;
@@ -53,7 +53,7 @@ public class Knockoff_Selector {
 		}).repeat(22, TimeUnit.SECONDS).schedule();
 	}
 
-	public void send_player_knockoff(Player p) {
+	public void send_player(Player p) {
 		if (selected_server == null || selected_server.is_going() || !selected_server.is_online) {
 			select_new_server();
 		}

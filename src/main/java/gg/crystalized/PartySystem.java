@@ -10,6 +10,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
@@ -95,6 +97,15 @@ class Party {
 		c = c.append(text("\n---------------------------"));
 		return c;
 	}
+
+	public ByteArrayDataOutput update_message() {
+		ByteArrayDataOutput out = ByteStreams.newDataOutput();
+		out.writeUTF("Party");
+		for (Player p : members) {
+			out.writeUTF(p.getUsername());
+		}
+		return out;
+	}
 }
 
 class PartyCommand implements SimpleCommand {
@@ -165,37 +176,63 @@ class PartyCommand implements SimpleCommand {
 			return;
 		}
 
-		Party party = ps.get_party_of(executer);
-		if (args[0].equals("list")) {
-			if (party == null) {
-				invocation.source().sendMessage(text("You are not in a party"));
-			} else {
-				invocation.source().sendMessage(party.render());
-			}
-		} else if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")) {
+		// for commands that require a player to be specified, get the player
+		Player mentioned_player = null;
+		if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add") 
+				|| args[0].equals("join") || args[0].equals("accept") || args[0].equals("kick") || args[0].equals("remove")
+				|| args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
 			if (args.length < 2) {
+				invocation.source().sendMessage(text("Please specify a player"));
 				return;
 			}
+			mentioned_player = server.getPlayer(args[1]).orElse(null);
+			if (mentioned_player == null) {
+				invocation.source().sendMessage(text("Couldnt find Player \"" + args[1] + "\""));
+				return;
+			}
+		}
+
+		Party party = ps.get_party_of(executer);
+
+		// for commands that require you in a party, check that you are
+		if (args[0].equals("list") || args[0].equals("disband") || args[0].equals("leave") || args[0].equals("remove")
+				|| args[0].equals("kick") || args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
+			if (party == null) {
+				invocation.source().sendMessage(text("You are not in a party"));
+				return;
+			}
+		}
+
+		// for commands that require you to be leader, check that you are
+		if (args[0].equals("disband") || args[0].equals("remove") || args[0].equals("kick")
+				|| args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
+			if (!party.is_leader(executer)) {
+				invocation.source().sendMessage(text("You are not the leader of the party"));
+				return;
+			}
+		}
+
+		if (args[0].equals("list")) {
+			invocation.source().sendMessage(party.render());
+
+		} else if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")) {
 			if (party == null) {
 				invocation.source().sendMessage(text("Creating a new party"));
 				party = new Party(executer);
 				ps.partys.add(party);
 			}
-			Player invited = server.getPlayer(args[1]).orElse(null);
-			if (invited == null) {
-				invocation.source().sendMessage(text("Couldnt find Player \"" + args[1] + "\""));
+			if (!party.is_leader(executer)) {
+				invocation.source().sendMessage(text("You are not the leader of the party"));
 				return;
 			}
-			Audience.audience(party.members).sendMessage(text("Plyer \"" + args[1] + "\" has been invited to your Party"));
+			Audience.audience(party.members).sendMessage(text("Player \"" + args[1] + "\" has been invited to your Party"));
 			party.invited.remove(args[1]);
 			party.invited.add(args[1]);
-			invited.sendMessage(
+			mentioned_player.sendMessage(
 					text("You have been invited to join the party of " + (executer).getUsername() + "\n [Accept]")
 							.clickEvent(ClickEvent.runCommand("/party join " + executer.getUsername())));
+
 		} else if (args[0].equals("join") || args[0].equals("accept")) {
-			if (args.length < 2) {
-				return;
-			}
 			if (party != null) {
 				invocation.source().sendMessage(text("You are already in a party"));
 				return;
@@ -213,79 +250,49 @@ class PartyCommand implements SimpleCommand {
 			executer.sendMessage(text("You have joined the party of " + args[1]));
 			party_to_join.members.add(executer);
 			plugin.que_system.remove_player_from_que(executer);
-			if (plugin.que_system.ls_que.get_players().contains(party_to_join.members.get(0))) {
+			if (plugin.que_system.ls_que.contains(party_to_join.members.get(0))) {
 				plugin.que_system.ls_que.add_player(executer);
-			} else if (plugin.que_system.ko_que.get_players().contains(party_to_join.members.get(0))) {
+			} else if (plugin.que_system.ko_que.contains(party_to_join.members.get(0))) {
 				plugin.que_system.ko_que.add_player(executer);
 			}
+
 		} else if (args[0].equals("kick") || args[0].equals("remove")) {
-			if (args.length < 2) {
-				return;
-			}
-			if (!party.is_leader(executer)) {
-				invocation.source().sendMessage(text("You are not the leader of the party"));
-				return;
-			}
-			Player player_being_kicked = server.getPlayer(args[1]).orElse(null);
-			if (player_being_kicked == null) {
-				invocation.source().sendMessage(text("Couldnt find Player \"" + args[1] + "\""));
-				return;
-			}
-			if (player_being_kicked == executer) {
+			if (mentioned_player == executer) {
 				invocation.source().sendMessage(text("You cant kick yourself"));
 				return;
 			}
-			if (!party.members.contains(player_being_kicked)) {
+			if (!party.members.contains(mentioned_player)) {
 				invocation.source().sendMessage(text("Player \"" + args[1] + "\" was not in your party"));
 				return;
 			}
 			Audience.audience(party.members)
 					.sendMessage(text("Kicking Player \"" + args[1] + "\" from your party"));
 			party.invited.remove(args[1]);
-			ps.remove_player(player_being_kicked);
-			plugin.que_system.remove_player_from_que(player_being_kicked);
+			ps.remove_player(mentioned_player);
+			plugin.que_system.remove_player_from_que(mentioned_player);
+
 		} else if (args[0].equals("disband")) {
-			if (party == null) {
-				invocation.source().sendMessage(text("You are not in a party"));
-				return;
-			}
-			if (!party.is_leader(executer)) {
-				invocation.source().sendMessage(text("You are not the leader of the party"));
-				return;
-			}
 			Audience.audience(party.members).sendMessage(text("Your party has been disbanded"));
 			ps.partys.remove(party);
 			for (Player p : party.members) {
 				plugin.que_system.remove_player_from_que(p);
 			}
+
 		} else if (args[0].equals("leave")) {
-			if (party == null) {
-				invocation.source().sendMessage(text("You are not in a party"));
-				return;
-			}
 			ps.remove_player(executer);
 			plugin.que_system.remove_player_from_que(executer);
+
 		} else if (args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
-			if (args.length < 2) {
-				return;
-			}
-			if (party == null) {
-				invocation.source().sendMessage(text("You are not in a party"));
-				return;
-			}
-			if (!party.is_leader(executer)) {
-				invocation.source().sendMessage(text("You are not the leader of the party"));
-				return;
-			}
-			Player promoted_player = server.getPlayer(args[1]).orElse(null);
-			if (promoted_player == null) {
-				invocation.source().sendMessage(text("Couldnt find Player \"" + args[1] + "\""));
-				return;
-			}
-			int promoted_index = party.members.indexOf(promoted_player);
+			int promoted_index = party.members.indexOf(mentioned_player);
 			Collections.swap(party.members, 0, promoted_index);
 			Audience.audience(party.members)
 					.sendMessage(text("Promoting \"" + args[1] + "\" to party leader"));
 		}
+
+		// we are here if the command succeded, so we now update the party
+		if (party != null) {
+			plugin.ls_selector.send_party_update(party);
+		}
+
 	}
 }

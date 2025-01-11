@@ -1,6 +1,5 @@
 package gg.crystalized;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,15 +36,11 @@ public class QueSystem {
 		server.getScheduler().buildTask(plugin, () -> {
 			show_action_bars();
 
-			if (ls_que.get_players().size() >= LS_NEEDED_TO_START) {
-				for (Player p : ls_que.get_players()) {
-					plugin.ls_selector.send_player_litestrike(p);
-				}
+			if (ls_que.size() >= LS_NEEDED_TO_START) {
+				ls_que.send_players(plugin.ls_selector);
 			}
-			if (ko_que.get_players().size() >= KO_NEEDED_TO_START) {
-				for (Player p : ko_que.get_players()) {
-					plugin.ko_selector.send_player_knockoff(p);
-				}
+			if (ko_que.size() >= KO_NEEDED_TO_START) {
+				ko_que.send_players(plugin.ko_selector);
 			}
 		}).repeat(1, TimeUnit.SECONDS).schedule();
 
@@ -66,7 +61,7 @@ public class QueSystem {
 	}
 
 	public boolean is_in_a_que(Player p) {
-		if (ls_que.get_players().contains(p) || ko_que.get_players().contains(p)) {
+		if (ls_que.contains(p) || ko_que.contains(p)) {
 			p.sendMessage(text("You are already qued for a game"));
 			return true;
 		}
@@ -74,16 +69,12 @@ public class QueSystem {
 	}
 
 	private void show_action_bars() {
-		for (Player p : ls_que.get_players()) {
-			p.sendActionBar(text("You are in que for Litestrike! ")
-					.append(text("(" + ls_que.get_players().size() + "/" + LS_NEEDED_TO_START + ") "))
-					.append(text("Run /unque to leave the que")));
-		}
-		for (Player p : ko_que.get_players()) {
-			p.sendActionBar(text("You are in que for Knockoff! ")
-					.append(text("(" + ko_que.get_players().size() + "/" + KO_NEEDED_TO_START + ") "))
-					.append(text("Run /unque to leave the que")));
-		}
+		ls_que.get_players().sendActionBar(text("You are in que for Litestrike! ")
+				.append(text("(" + ls_que.size() + "/" + LS_NEEDED_TO_START + ") "))
+				.append(text("Run /unque to leave the que")));
+		ko_que.get_players().sendActionBar(text("You are in que for Knockoff! ")
+				.append(text("(" + ko_que.size() + "/" + KO_NEEDED_TO_START + ") "))
+				.append(text("Run /unque to leave the que")));
 	}
 }
 
@@ -124,8 +115,16 @@ class GameQue {
 		this.plugin = plugin;
 	}
 
-	public Set<Player> get_players() {
-		return Collections.unmodifiableSet(players);
+	public Audience get_players() {
+		return Audience.audience(players);
+	}
+
+	public int size() {
+		return players.size();
+	}
+
+	public boolean contains(Player p) {
+		return players.contains(p);
 	}
 
 	public void add_player(Player p) {
@@ -151,5 +150,11 @@ class GameQue {
 
 	public void clear() {
 		players.clear();
+	}
+
+	public void send_players(ServerSelector ss) {
+		for (Player p : players) {
+			ss.send_player(p);
+		}
 	}
 }
