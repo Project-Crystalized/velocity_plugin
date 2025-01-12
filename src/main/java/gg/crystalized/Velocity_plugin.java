@@ -5,6 +5,7 @@ import com.google.common.io.ByteStreams;
 import com.google.inject.Inject;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
+import com.velocitypowered.api.command.RawCommand;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.command.CommandExecuteEvent;
@@ -21,9 +22,13 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import static net.kyori.adventure.text.Component.text;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 
@@ -95,12 +100,18 @@ public class Velocity_plugin {
 
 		CommandMeta commandMetaEvent = commandManager.metaBuilder("start_event").plugin(this).build();
 		commandManager.register(commandMetaEvent, new StartEventCommand());
+
+		CommandMeta commandMetaBroadcast = commandManager.metaBuilder("broadcast").plugin(this).build();
+		commandManager.register(commandMetaBroadcast, new BroadCastCommand(server));
+
+		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
+		commandManager.register(commandMetaMsg, new MsgCommand(server));
 	}
 
 	@Subscribe
 	public void onPreConnect(PreLoginEvent e) {
 		if (ban_command.isBanned(e.getUniqueId())) {
-			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(Component.text("you are banned")));
+			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(text("you are banned")));
 		}
 
 	}
@@ -154,11 +165,6 @@ class StartEventCommand implements SimpleCommand {
 	}
 
 	@Override
-	public List<String> suggest(Invocation invocation) {
-		return List.of();
-	}
-
-	@Override
 	public boolean hasPermission(Invocation invocation) {
 		if (invocation.source() instanceof ConsoleCommandSource) {
 			return true;
@@ -181,11 +187,6 @@ class HubCommand implements SimpleCommand {
 	}
 
 	@Override
-	public List<String> suggest(Invocation invocation) {
-		return List.of();
-	}
-
-	@Override
 	public boolean hasPermission(Invocation invocation) {
 		return true;
 	}
@@ -203,21 +204,86 @@ class RejoinCommand implements SimpleCommand {
 		Player p = (Player) invocation.source();
 		RegisteredServer rs = ls_selector.get_server_of(p);
 		if (rs == null) {
-			p.sendMessage(Component.text("looks like your not part of any game"));
+			p.sendMessage(text("looks like your not part of any game"));
 		} else {
-			p.sendMessage(Component.text("Connecting your to previous game"));
+			p.sendMessage(text("Connecting you to previous game"));
 			p.createConnectionRequest(rs).connect();
 		}
 	}
 
 	@Override
+	public boolean hasPermission(Invocation invocation) {
+		return true;
+	}
+}
+
+class MsgCommand implements SimpleCommand {
+	private ProxyServer server;
+
+	public MsgCommand(ProxyServer server) {
+		this.server = server;
+	}
+
+	@Override
+	public void execute(final Invocation invocation) {
+		if (invocation.arguments().length == 0) {
+			return;
+		}
+		String messenger_name = "Console";
+		if (invocation.source() instanceof Player) {
+			messenger_name = ((Player) invocation.source()).getUsername();
+		}
+		Player p = server.getPlayer(invocation.arguments()[0]).orElse(null);
+		if (p == null) {
+			invocation.source().sendMessage(text("Couldnt find that player"));
+			return;
+		}
+		Component message = text("");
+		for (String arg : invocation.arguments()) {
+			if (arg == invocation.arguments()[0]) continue;
+			message = message.append(text(arg));
+		}
+		invocation.source().sendMessage(text("[You -> " + p.getUsername() + "] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
+		p.sendMessage(text("[" + messenger_name + " -> You] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
+	}
+
+	@Override
 	public List<String> suggest(Invocation invocation) {
+		if (invocation.arguments().length == 0 || invocation.arguments().length == 1) {
+			return server.getAllPlayers().stream().map(player -> player.getUsername()).collect(Collectors.toList());
+		}
 		return List.of();
 	}
 
 	@Override
-	public boolean hasPermission(Invocation invocation) {
+	public boolean hasPermission(final Invocation invocation) {
 		return true;
+	}
+
+}
+
+class BroadCastCommand implements RawCommand {
+	private ProxyServer server;
+
+	public BroadCastCommand(ProxyServer server) {
+		this.server = server;
+	}
+
+	@Override
+	public void execute(final Invocation invocation) {
+		Component message = text("!!IMPORTANT SERVER BROADCAST!!\n").color(NamedTextColor.YELLOW);
+		message = message.append(text(invocation.arguments()));
+		message.append(text("\n"));
+		Audience.audience(server.getAllPlayers()).sendMessage(message);
+	}
+
+	@Override
+	public boolean hasPermission(final Invocation invocation) {
+		if (invocation.source() instanceof ConsoleCommandSource) {
+			return true;
+		}
+		Player p = (Player) invocation.source();
+		return Velocity_plugin.is_admin(p);
 	}
 }
 
