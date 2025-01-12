@@ -36,7 +36,7 @@ public class QueSystem {
 		server.getScheduler().buildTask(plugin, () -> {
 			show_action_bars();
 
-			if (ls_que.size() >= LS_NEEDED_TO_START) {
+			if (ls_que.size() >= LS_NEEDED_TO_START && ls_que.size() % 2 == 0) {
 				ls_que.send_players(plugin.ls_selector);
 			}
 			if (ko_que.size() >= KO_NEEDED_TO_START) {

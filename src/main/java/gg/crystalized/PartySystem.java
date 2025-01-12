@@ -60,9 +60,9 @@ public class PartySystem {
 			Audience.audience(party.members)
 					.sendMessage(text(party.members.get(1).getUsername() + " is the new party leader"));
 		}
-		party.members.remove(p);
 		Audience.audience(party.members)
 				.sendMessage(text("Player \"" + p.getUsername() + "\" has left the party"));
+		party.members.remove(p);
 	}
 }
 
@@ -134,8 +134,8 @@ class PartyCommand implements SimpleCommand {
 		}
 		String[] args = invocation.arguments();
 		if (args.length == 0) {
-			return Arrays.asList("list", "invite", "inv", "add", "accept", "join", "kick", "remove", "disband", "leader",
-					"transfer", "promote");
+			return Arrays.asList("list", "invite", "inv", "add", "accept", "join", "kick",
+					"remove", "disband", "leader", "transfer", "promote", "leave");
 		}
 		if (args[0].equals("list") || args[0].equals("leave") || args[0].equals("disband")) {
 			return List.of();
@@ -162,8 +162,8 @@ class PartyCommand implements SimpleCommand {
 			return all_players;
 		}
 		if (args.length == 1) {
-			return Arrays.asList("list", "invite", "inv", "add", "accept", "join", "kick", "remove", "disband", "leader",
-					"transfer", "promote");
+			return Arrays.asList("list", "invite", "inv", "add", "accept", "join", "kick",
+					"remove", "disband", "leader", "transfer", "promote", "leave");
 		}
 		return List.of();
 	}
@@ -178,7 +178,7 @@ class PartyCommand implements SimpleCommand {
 
 		// for commands that require a player to be specified, get the player
 		Player mentioned_player = null;
-		if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add") 
+		if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")
 				|| args[0].equals("join") || args[0].equals("accept") || args[0].equals("kick") || args[0].equals("remove")
 				|| args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
 			if (args.length < 2) {
@@ -196,7 +196,8 @@ class PartyCommand implements SimpleCommand {
 
 		// for commands that require you in a party, check that you are
 		if (args[0].equals("list") || args[0].equals("disband") || args[0].equals("leave") || args[0].equals("remove")
-				|| args[0].equals("kick") || args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
+				|| args[0].equals("kick") || args[0].equals("leader") || args[0].equals("transfer")
+				|| args[0].equals("promote")) {
 			if (party == null) {
 				invocation.source().sendMessage(text("You are not in a party"));
 				return;

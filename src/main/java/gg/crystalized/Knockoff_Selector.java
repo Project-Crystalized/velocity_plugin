@@ -175,8 +175,7 @@ class KnockoffServer {
 			} catch (Exception e) {
 				is_online = false;
 			}
-		}).repeat(15, TimeUnit.SECONDS)
-				.schedule();
+		}).repeat(15, TimeUnit.SECONDS).schedule();
 	}
 
 	public void start_game(Set<String> playing_players) {
