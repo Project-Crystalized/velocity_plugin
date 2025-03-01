@@ -241,7 +241,7 @@ class MsgCommand implements SimpleCommand {
 		Component message = text("");
 		for (String arg : invocation.arguments()) {
 			if (arg == invocation.arguments()[0]) continue;
-			message = message.append(text(arg));
+			message = message.append(text(" " + arg));
 		}
 		invocation.source().sendMessage(text("[You -> " + p.getUsername() + "] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
 		p.sendMessage(text("[" + messenger_name + " -> You] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
