@@ -64,7 +64,7 @@ public class Knockoff_Selector implements ServerSelector {
 		Party party = plugin.party_system.get_party_of(p);
 		if (party != null) {
 			if (!party.is_leader(p)) {
-				p.sendMessage(text("You must be the party leader to join the que"));
+				p.sendMessage(text("You must be the party leader to join the queue"));
 				return;
 			}
 			for (Player player : party.members) {

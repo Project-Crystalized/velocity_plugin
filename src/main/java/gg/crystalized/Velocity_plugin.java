@@ -88,7 +88,7 @@ public class Velocity_plugin {
 		CommandMeta commandMetahub = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
 		commandManager.register(commandMetahub, new HubCommand(server.getServer("lobby").get()));
 
-		CommandMeta commandMetaUnque = commandManager.metaBuilder("unque").plugin(this).build();
+		CommandMeta commandMetaUnque = commandManager.metaBuilder("unque").aliases("unqueue").plugin(this).build();
 		commandManager.register(commandMetaUnque, new UnqueCommand(this));
 
 		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
@@ -240,10 +240,12 @@ class MsgCommand implements SimpleCommand {
 		}
 		Component message = text("");
 		for (String arg : invocation.arguments()) {
-			if (arg == invocation.arguments()[0]) continue;
+			if (arg == invocation.arguments()[0])
+				continue;
 			message = message.append(text(" " + arg));
 		}
-		invocation.source().sendMessage(text("[You -> " + p.getUsername() + "] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
+		invocation.source()
+				.sendMessage(text("[You -> " + p.getUsername() + "] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
 		p.sendMessage(text("[" + messenger_name + " -> You] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
 	}
 

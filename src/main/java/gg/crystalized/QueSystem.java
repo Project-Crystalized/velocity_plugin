@@ -62,19 +62,19 @@ public class QueSystem {
 
 	public boolean is_in_a_que(Player p) {
 		if (ls_que.contains(p) || ko_que.contains(p)) {
-			p.sendMessage(text("You are already qued for a game"));
+			p.sendMessage(text("You are already queued for a game"));
 			return true;
 		}
 		return false;
 	}
 
 	private void show_action_bars() {
-		ls_que.get_players().sendActionBar(text("You are in que for Litestrike! ")
+		ls_que.get_players().sendActionBar(text("You are in queue for Litestrike! ")
 				.append(text("(" + ls_que.size() + "/" + LS_NEEDED_TO_START + ") "))
-				.append(text("Run /unque to leave the que")));
-		ko_que.get_players().sendActionBar(text("You are in que for Knockoff! ")
+				.append(text("Run /unque to leave the queue")));
+		ko_que.get_players().sendActionBar(text("You are in queue for Knockoff! ")
 				.append(text("(" + ko_que.size() + "/" + KO_NEEDED_TO_START + ") "))
-				.append(text("Run /unque to leave the que")));
+				.append(text("Run /unque to leave the queue")));
 	}
 }
 
