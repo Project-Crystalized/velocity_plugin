@@ -179,7 +179,6 @@ public class Litestrike_Selector implements ServerSelector {
 					+ " | Ongoing games: " + games_going).color(NamedTextColor.WHITE);
 		}
 	}
-
 }
 
 class LitestrikeServer {

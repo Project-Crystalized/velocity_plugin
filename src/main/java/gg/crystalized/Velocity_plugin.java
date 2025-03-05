@@ -92,7 +92,7 @@ public class Velocity_plugin {
 		commandManager.register(commandMetaUnque, new UnqueCommand(this));
 
 		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
-		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector));
+		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector, que_system));
 
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
 		ban_command = new BanCommand(logger, server);
@@ -194,8 +194,10 @@ class HubCommand implements SimpleCommand {
 
 class RejoinCommand implements SimpleCommand {
 	private Litestrike_Selector ls_selector;
+	private QueSystem qs;
 
-	public RejoinCommand(Litestrike_Selector ls_selector) {
+	public RejoinCommand(Litestrike_Selector ls_selector, QueSystem qs) {
+		this.qs = qs;
 		this.ls_selector = ls_selector;
 	}
 
@@ -206,6 +208,7 @@ class RejoinCommand implements SimpleCommand {
 		if (rs == null) {
 			p.sendMessage(text("looks like your not part of any game"));
 		} else {
+			qs.remove_player_from_que(p);
 			p.sendMessage(text("Connecting you to previous game"));
 			p.createConnectionRequest(rs).connect();
 		}
