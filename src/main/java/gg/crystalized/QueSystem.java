@@ -14,10 +14,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import static net.kyori.adventure.text.Component.text;
 
-import org.slf4j.Logger;
-
 public class QueSystem {
-	private Logger logger;
 	public GameQue ls_que;
 	public GameQue ko_que;
 	private Velocity_plugin plugin;
@@ -26,8 +23,7 @@ public class QueSystem {
 	public static final int LS_NEEDED_TO_START = 6;
 	public static final int KO_NEEDED_TO_START = 4;
 
-	public QueSystem(ProxyServer server, Logger logger, Velocity_plugin plugin) {
-		this.logger = logger;
+	public QueSystem(ProxyServer server, Velocity_plugin plugin) {
 		this.plugin = plugin;
 		this.ls_que = new GameQue(this, plugin);
 		this.ko_que = new GameQue(this, plugin);

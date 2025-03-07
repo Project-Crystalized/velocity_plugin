@@ -22,19 +22,16 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import static net.kyori.adventure.text.Component.text;
 
-import org.slf4j.Logger;
 
 public class Litestrike_Selector implements ServerSelector {
 
 	private List<LitestrikeServer> ls_servers = new ArrayList<>();
 	private LitestrikeServer selected_server;
 
-	private Logger logger;
 	private Velocity_plugin plugin;
 	private ProxyServer server;
 
-	public Litestrike_Selector(ProxyServer server, Logger logger, Velocity_plugin plugin) {
-		this.logger = logger;
+	public Litestrike_Selector(ProxyServer server, Velocity_plugin plugin) {
 		this.plugin = plugin;
 		this.server = server;
 		for (RegisteredServer rs : server.getAllServers()) {
@@ -50,7 +47,7 @@ public class Litestrike_Selector implements ServerSelector {
 				if (lss.rs.getPlayersConnected().size() == 0 && lss.is_going()) {
 					server.getScheduler().buildTask(plugin, () -> lss.game_end()).delay(21, TimeUnit.SECONDS)
 							.schedule();
-					logger.info("Scheduled a litestrike server to become ready again");
+					Velocity_plugin.logger.info("Scheduled a litestrike server to become ready again");
 				}
 			}
 		}).repeat(22, TimeUnit.SECONDS).schedule();
@@ -141,8 +138,8 @@ public class Litestrike_Selector implements ServerSelector {
 				return;
 			}
 		}
-		if (logger != null) {
-			logger.error("No Litestrike servers are available at the Moment");
+		if (Velocity_plugin.logger != null) {
+			Velocity_plugin.logger.error("No Litestrike servers are available at the Moment");
 		}
 	}
 

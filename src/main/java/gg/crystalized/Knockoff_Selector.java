@@ -19,8 +19,6 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-import org.slf4j.Logger;
-
 import static net.kyori.adventure.text.Component.text;
 
 public class Knockoff_Selector implements ServerSelector {
@@ -28,11 +26,9 @@ public class Knockoff_Selector implements ServerSelector {
 	private List<KnockoffServer> ko_servers = new ArrayList<>();
 	private KnockoffServer selected_server;
 
-	private Logger logger;
 	private Velocity_plugin plugin;
 
-	public Knockoff_Selector(ProxyServer server, Logger logger, Velocity_plugin plugin) {
-		this.logger = logger;
+	public Knockoff_Selector(ProxyServer server, Velocity_plugin plugin) {
 		this.plugin = plugin;
 		for (RegisteredServer rs : server.getAllServers()) {
 			if (rs.getServerInfo().getName().startsWith("knockoff")) {
@@ -47,7 +43,7 @@ public class Knockoff_Selector implements ServerSelector {
 				if (kos.rs.getPlayersConnected().size() == 0 && kos.is_going()) {
 					server.getScheduler().buildTask(plugin, () -> kos.game_end()).delay(21, TimeUnit.SECONDS)
 							.schedule();
-					logger.info("Scheduled a knockoff server to become ready again");
+					Velocity_plugin.logger.info("Scheduled a knockoff server to become ready again");
 				}
 			}
 		}).repeat(22, TimeUnit.SECONDS).schedule();
@@ -115,8 +111,8 @@ public class Knockoff_Selector implements ServerSelector {
 				return;
 			}
 		}
-		if (logger != null) {
-			logger.error("No Knockoff servers are available at the Moment");
+		if (Velocity_plugin.logger != null) {
+			Velocity_plugin.logger.error("No Knockoff servers are available at the Moment");
 		}
 	}
 

@@ -20,20 +20,16 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-import org.slf4j.Logger;
-
 public class BanCommand implements SimpleCommand {
 	public static final String URL = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/ban_db.sql";
 	private ProxyServer proxy;
-	private Logger logger;
 
-	public BanCommand(Logger logger, ProxyServer proxy) {
+	public BanCommand(ProxyServer proxy) {
 		this.proxy = proxy;
-		this.logger = logger;
 		try {
 			Class.forName("org.sqlite.JDBC");
 		} catch (Exception e) {
-			logger.error("" + e);
+			Velocity_plugin.logger.error("" + e);
 		}
 		String create_ban_table = "CREATE TABLE IF NOT EXISTS BanTable ("
 				+ "banned_uuid 		BLOB UNIQUE,"
@@ -47,8 +43,8 @@ public class BanCommand implements SimpleCommand {
 			Statement stmt = conn.createStatement();
 			stmt.execute(create_ban_table);
 		} catch (SQLException e) {
-			logger.warn(e.getMessage());
-			logger.warn("continueing without ban-database");
+			Velocity_plugin.logger.warn(e.getMessage());
+			Velocity_plugin.logger.warn("continueing without ban-database");
 		}
 	}
 
@@ -74,12 +70,12 @@ public class BanCommand implements SimpleCommand {
 				PreparedStatement lift_ban_stmt = conn.prepareStatement(lift_ban);
 				lift_ban_stmt.setBytes(1, uuid_to_bytes(p));
 				lift_ban_stmt.executeUpdate();
-				logger.warn("lifted a ban");
+				Velocity_plugin.logger.warn("lifted a ban");
 				return false;
 			}
 		} catch (SQLException e) {
-			logger.warn(e.getMessage());
-			logger.warn("continueing without ban-database");
+			Velocity_plugin.logger.warn(e.getMessage());
+			Velocity_plugin.logger.warn("continueing without ban-database");
 			return false;
 		}
 	}
@@ -104,7 +100,11 @@ public class BanCommand implements SimpleCommand {
 			}
 			String reason = "";
 			if (args.length >= 3) {
-				reason = args[2];
+				for (String arg : args) {
+					if (arg == args[0] || arg == args[1])
+						continue;
+					reason += arg;
+				}
 			}
 			invocation.source().sendMessage(Component.text("banning " + args[0] + " for " + duration + "seconds"));
 			player.disconnect(Component.text("you have been banned for: " + reason));
@@ -167,10 +167,14 @@ public class BanCommand implements SimpleCommand {
 	@Override
 	public CompletableFuture<List<String>> suggestAsync(Invocation invocation) {
 		List<String> list = new ArrayList<>();
-		if (invocation.arguments().length == 0) {
+		if (invocation.arguments().length == 0 || invocation.arguments().length == 1) {
 			for (Player p : proxy.getAllPlayers()) {
 				list.add(p.getUsername());
 			}
+		} else if (invocation.arguments().length == 2) {
+			list = List.of("5m", "1h", "1d");
+		} else if (invocation.arguments().length == 3) {
+			list = List.of("cheating", "bad language", "inappropriate skin", "whatever reason you like");
 		}
 		return CompletableFuture.completedFuture(list);
 	}

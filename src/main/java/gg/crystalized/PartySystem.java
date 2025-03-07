@@ -23,12 +23,10 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 
-import org.slf4j.Logger;
-
 public class PartySystem {
 	public Set<Party> partys = ConcurrentHashMap.newKeySet();
 
-	public PartySystem(ProxyServer server, Logger logger, Velocity_plugin plugin) {
+	public PartySystem(ProxyServer server,  Velocity_plugin plugin) {
 		// CommandManager commandManager = server.getCommandManager();
 		// CommandMeta commandMetaParty = commandManager.metaBuilder("party").aliases("p").plugin(plugin).build();
 		// commandManager.register(commandMetaParty, new PartyCommand(this, plugin, server));

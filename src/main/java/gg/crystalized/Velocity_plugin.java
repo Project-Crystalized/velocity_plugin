@@ -37,7 +37,7 @@ import org.slf4j.Logger;
 public class Velocity_plugin {
 
 	private final ProxyServer server;
-	public final Logger logger;
+	public static Logger logger;
 	public Litestrike_Selector ls_selector;
 	public Knockoff_Selector ko_selector;
 	public QueSystem que_system;
@@ -53,7 +53,7 @@ public class Velocity_plugin {
 	@Inject
 	public Velocity_plugin(ProxyServer server, Logger logger) {
 		this.server = server;
-		this.logger = logger;
+		Velocity_plugin.logger = logger;
 	}
 
 	@Subscribe
@@ -75,13 +75,13 @@ public class Velocity_plugin {
 		server.getChannelRegistrar().register(LS_CHANNEL);
 		server.getChannelRegistrar().register(KO_CHANNEL);
 
-		this.ls_selector = new Litestrike_Selector(server, logger, this);
-		this.ko_selector = new Knockoff_Selector(server, logger, this);
+		this.ls_selector = new Litestrike_Selector(server, this);
+		this.ko_selector = new Knockoff_Selector(server, this);
 		server.getEventManager().register(this, ls_selector);
 		server.getEventManager().register(this, ko_selector);
 
-		this.party_system = new PartySystem(server, logger, this);
-		this.que_system = new QueSystem(server, logger, this);
+		this.party_system = new PartySystem(server, this);
+		this.que_system = new QueSystem(server, this);
 
 		CommandManager commandManager = server.getCommandManager();
 
@@ -95,7 +95,7 @@ public class Velocity_plugin {
 		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector, que_system));
 
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
-		ban_command = new BanCommand(logger, server);
+		ban_command = new BanCommand(server);
 		commandManager.register(commandMetaban, ban_command);
 
 		CommandMeta commandMetaEvent = commandManager.metaBuilder("start_event").plugin(this).build();
@@ -254,8 +254,12 @@ class MsgCommand implements SimpleCommand {
 
 	@Override
 	public List<String> suggest(Invocation invocation) {
-		if (invocation.arguments().length == 0 || invocation.arguments().length == 1) {
+		if (invocation.arguments().length == 0) {
 			return server.getAllPlayers().stream().map(player -> player.getUsername()).collect(Collectors.toList());
+		}
+		if (invocation.arguments().length == 1) {
+			return server.getAllPlayers().stream().map(player -> player.getUsername())
+					.filter(name -> name.startsWith(invocation.arguments()[0])).collect(Collectors.toList());
 		}
 		return List.of();
 	}
