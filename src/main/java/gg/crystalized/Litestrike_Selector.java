@@ -22,7 +22,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import static net.kyori.adventure.text.Component.text;
 
-
 public class Litestrike_Selector implements ServerSelector {
 
 	private List<LitestrikeServer> ls_servers = new ArrayList<>();
@@ -51,6 +50,17 @@ public class Litestrike_Selector implements ServerSelector {
 				}
 			}
 		}).repeat(22, TimeUnit.SECONDS).schedule();
+
+		// tell the server how many people are in que
+		server.getScheduler().buildTask(plugin, () -> {
+			if (QueSystem.ls_que == null || selected_server == null) {
+				return;
+			}
+			ByteArrayDataOutput out = ByteStreams.newDataOutput();
+			out.writeUTF("queue_size");
+			out.writeInt(QueSystem.ls_que.size());
+			selected_server.rs.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+		}).repeat(5, TimeUnit.SECONDS).schedule();
 	}
 
 	public void send_player(Player p) {
@@ -123,7 +133,7 @@ public class Litestrike_Selector implements ServerSelector {
 					}
 					lss.start_game(playing_players);
 					select_new_server();
-					plugin.que_system.ls_que.clear();
+					QueSystem.ls_que.clear();
 				}
 			}
 		}

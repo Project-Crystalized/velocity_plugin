@@ -96,7 +96,7 @@ public class Knockoff_Selector implements ServerSelector {
 					}
 					kos.start_game(playing_players);
 					select_new_server();
-					plugin.que_system.ko_que.clear();
+					QueSystem.ko_que.clear();
 				}
 			}
 		}

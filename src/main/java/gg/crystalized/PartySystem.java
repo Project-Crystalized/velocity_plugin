@@ -26,10 +26,12 @@ import net.kyori.adventure.text.event.ClickEvent;
 public class PartySystem {
 	public Set<Party> partys = ConcurrentHashMap.newKeySet();
 
-	public PartySystem(ProxyServer server,  Velocity_plugin plugin) {
+	public PartySystem(ProxyServer server, Velocity_plugin plugin) {
 		// CommandManager commandManager = server.getCommandManager();
-		// CommandMeta commandMetaParty = commandManager.metaBuilder("party").aliases("p").plugin(plugin).build();
-		// commandManager.register(commandMetaParty, new PartyCommand(this, plugin, server));
+		// CommandMeta commandMetaParty =
+		// commandManager.metaBuilder("party").aliases("p").plugin(plugin).build();
+		// commandManager.register(commandMetaParty, new PartyCommand(this, plugin,
+		// server));
 	}
 
 	public Party get_party_of(Player p) {
@@ -249,10 +251,10 @@ class PartyCommand implements SimpleCommand {
 			executer.sendMessage(text("You have joined the party of " + args[1]));
 			party_to_join.members.add(executer);
 			plugin.que_system.remove_player_from_que(executer);
-			if (plugin.que_system.ls_que.contains(party_to_join.members.get(0))) {
-				plugin.que_system.ls_que.add_player(executer);
-			} else if (plugin.que_system.ko_que.contains(party_to_join.members.get(0))) {
-				plugin.que_system.ko_que.add_player(executer);
+			if (QueSystem.ls_que.contains(party_to_join.members.get(0))) {
+				QueSystem.ls_que.add_player(executer);
+			} else if (QueSystem.ko_que.contains(party_to_join.members.get(0))) {
+				QueSystem.ko_que.add_player(executer);
 			}
 
 		} else if (args[0].equals("kick") || args[0].equals("remove")) {

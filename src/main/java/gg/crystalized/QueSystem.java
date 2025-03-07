@@ -15,8 +15,8 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import static net.kyori.adventure.text.Component.text;
 
 public class QueSystem {
-	public GameQue ls_que;
-	public GameQue ko_que;
+	public static GameQue ls_que;
+	public static GameQue ko_que;
 	private Velocity_plugin plugin;
 	private ProxyServer server;
 
@@ -25,8 +25,8 @@ public class QueSystem {
 
 	public QueSystem(ProxyServer server, Velocity_plugin plugin) {
 		this.plugin = plugin;
-		this.ls_que = new GameQue(this, plugin);
-		this.ko_que = new GameQue(this, plugin);
+		ls_que = new GameQue(this, plugin);
+		ko_que = new GameQue(this, plugin);
 		this.server = server;
 
 		server.getScheduler().buildTask(plugin, () -> {
