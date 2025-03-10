@@ -134,10 +134,8 @@ public class Velocity_plugin {
 
 		String message2 = in.readUTF();
 		if (message2.contains("litestrike")) {
-			ls_selector.send_player(backend_conn.getPlayer());
 			QueSystem.ls_que.add_player(backend_conn.getPlayer());
 		} else if (message2.contains("knockoff")) {
-			ko_selector.send_player(backend_conn.getPlayer());
 			QueSystem.ko_que.add_player(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();

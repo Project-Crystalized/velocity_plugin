@@ -28,8 +28,9 @@ public class QueSystem {
 
 	public QueSystem(ProxyServer server, Velocity_plugin plugin) {
 		this.plugin = plugin;
-		ls_que = new GameQue(this, plugin, LS_MAX_PLAYERS);
-		ko_que = new GameQue(this, plugin, KO_MAX_PLAYERS);
+
+		ls_que = new GameQue(this, plugin, LS_MAX_PLAYERS, plugin.ls_selector);
+		ko_que = new GameQue(this, plugin, KO_MAX_PLAYERS, plugin.ko_selector);
 		this.server = server;
 
 		server.getScheduler().buildTask(plugin, () -> {
@@ -109,11 +110,13 @@ class GameQue {
 	private Set<Player> players = ConcurrentHashMap.newKeySet();
 	private Velocity_plugin plugin;
 	private int max_players;
+	private ServerSelector selector;
 
-	public GameQue(QueSystem qs, Velocity_plugin plugin, int max_players) {
+	public GameQue(QueSystem qs, Velocity_plugin plugin, int max_players, ServerSelector selector) {
 		this.qs = qs;
 		this.plugin = plugin;
 		this.max_players = max_players;
+		this.selector = selector;
 	}
 
 	public Audience get_players() {
@@ -142,6 +145,9 @@ class GameQue {
 				p.sendMessage(text("You party is too large to join the current que, please wait for a bit."));
 				return;
 			}
+			for (Player member: party.members) {
+				selector.send_player(member);
+			}
 			players.addAll(party.members);
 			Audience.audience(party.members).sendMessage(text("Your party has entered the que"));
 		} else {
@@ -149,6 +155,7 @@ class GameQue {
 				p.sendMessage(text("The que is already full, a game is starting rn. Please wait a few seconds."));
 				return;
 			}
+			selector.send_player(p);
 			players.add(p);
 		}
 	}
