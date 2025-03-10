@@ -121,19 +121,22 @@ public class Litestrike_Selector implements ServerSelector {
 
 		String message = in.readUTF();
 		if (message.contains("start_game")) {
+			// Velocity_plugin.logger.error("received plugin message");
+
+			Set<String> playing_players = new HashSet<>();
+			while (true) {
+				try {
+					playing_players.add(in.readUTF());
+				} catch (Exception e) {
+					break;
+				}
+			}
 			for (LitestrikeServer lss : ls_servers) {
 				if (lss.rs == backend.getServer()) {
-					Set<String> playing_players = new HashSet<>();
-					while (true) {
-						try {
-							playing_players.add(in.readUTF());
-						} catch (Exception e) {
-							break;
-						}
-					}
 					lss.start_game(playing_players);
 					select_new_server();
 					QueSystem.ls_que.clear();
+					return;
 				}
 			}
 		}
@@ -214,11 +217,17 @@ class LitestrikeServer {
 	public void start_game(Set<String> playing_players) {
 		this.is_game_going = true;
 		this.playing_players = playing_players;
+
+		// Velocity_plugin.logger.error("starting game with:");
+		// for (String name : playing_players) {
+		// 	Velocity_plugin.logger.error(name);
+		// }
 	}
 
 	public void game_end() {
 		this.is_game_going = false;
 		this.playing_players = null;
+		// Velocity_plugin.logger.error("end game:");
 	}
 
 	public boolean is_going() {
@@ -226,6 +235,16 @@ class LitestrikeServer {
 	}
 
 	public boolean contains_player(Player p) {
+		// Velocity_plugin.logger.error("player trying to rejoin: " + p.getGameProfile().getName());
+		// Velocity_plugin.logger.error("playing players:");
+		// if (playing_players != null) {
+		// 	for (String name : playing_players) {
+		// 		Velocity_plugin.logger.error(name);
+		// 	}
+		// } else {
+		// 	Velocity_plugin.logger.error("playing_players is null");
+		// }
+		// Velocity_plugin.logger.error("");
 		if (playing_players != null && playing_players.contains(p.getGameProfile().getName())) {
 			return true;
 		}

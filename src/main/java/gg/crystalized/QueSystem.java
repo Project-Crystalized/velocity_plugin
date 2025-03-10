@@ -23,10 +23,13 @@ public class QueSystem {
 	public static final int LS_NEEDED_TO_START = 6;
 	public static final int KO_NEEDED_TO_START = 4;
 
+	public static final int LS_MAX_PLAYERS = 8;
+	public static final int KO_MAX_PLAYERS = 16;
+
 	public QueSystem(ProxyServer server, Velocity_plugin plugin) {
 		this.plugin = plugin;
-		ls_que = new GameQue(this, plugin);
-		ko_que = new GameQue(this, plugin);
+		ls_que = new GameQue(this, plugin, LS_MAX_PLAYERS);
+		ko_que = new GameQue(this, plugin, KO_MAX_PLAYERS);
 		this.server = server;
 
 		server.getScheduler().buildTask(plugin, () -> {
@@ -105,10 +108,12 @@ class GameQue {
 	private QueSystem qs;
 	private Set<Player> players = ConcurrentHashMap.newKeySet();
 	private Velocity_plugin plugin;
+	private int max_players;
 
-	public GameQue(QueSystem qs, Velocity_plugin plugin) {
+	public GameQue(QueSystem qs, Velocity_plugin plugin, int max_players) {
 		this.qs = qs;
 		this.plugin = plugin;
+		this.max_players = max_players;
 	}
 
 	public Audience get_players() {
@@ -133,9 +138,17 @@ class GameQue {
 				p.sendMessage(text("You must be the party leader to join the que"));
 				return;
 			}
+			if (party.members.size() + players.size() > max_players) {
+				p.sendMessage(text("You party is too large to join the current que, please wait for a bit."));
+				return;
+			}
 			players.addAll(party.members);
 			Audience.audience(party.members).sendMessage(text("Your party has entered the que"));
 		} else {
+			if (players.size() >= max_players) {
+				p.sendMessage(text("The que is already full, a game is starting rn. Please wait a few seconds."));
+				return;
+			}
 			players.add(p);
 		}
 	}
