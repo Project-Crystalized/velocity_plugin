@@ -133,6 +133,7 @@ class GameQue {
 
 	public void add_player(Player p) {
 		if (qs.is_in_a_que(p)) {
+			selector.send_player(p);
 			return;
 		}
 		Party party = plugin.party_system.get_party_of(p);
@@ -145,7 +146,7 @@ class GameQue {
 				p.sendMessage(text("You party is too large to join the current que, please wait for a bit."));
 				return;
 			}
-			for (Player member: party.members) {
+			for (Player member : party.members) {
 				selector.send_player(member);
 			}
 			players.addAll(party.members);
