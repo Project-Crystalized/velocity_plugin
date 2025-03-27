@@ -49,6 +49,7 @@ public class Velocity_plugin {
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
 	public static final MinecraftChannelIdentifier LS_CHANNEL = MinecraftChannelIdentifier.from("crystalized:litestrike");
 	public static final MinecraftChannelIdentifier KO_CHANNEL = MinecraftChannelIdentifier.from("crystalized:knockoff");
+	public static final MinecraftChannelIdentifier CRYSTALIZED_ESSENTIALS = MinecraftChannelIdentifier.from("crystalized:essentials");
 
 	@Inject
 	public Velocity_plugin(ProxyServer server, Logger logger) {
@@ -59,7 +60,13 @@ public class Velocity_plugin {
 	@Subscribe
 	public void onCommand(CommandExecuteEvent e) {
 		if (e.getCommand().startsWith("server")) {
-			e.setResult(CommandResult.denied());
+			if (e.getCommandSource() instanceof Player) {
+				if (!(is_admin((Player) e.getCommandSource()))) {
+					e.setResult(CommandResult.denied());
+				}
+			} else {
+				e.setResult(CommandResult.denied());
+			}
 		}
 	}
 
@@ -74,6 +81,7 @@ public class Velocity_plugin {
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
 		server.getChannelRegistrar().register(LS_CHANNEL);
 		server.getChannelRegistrar().register(KO_CHANNEL);
+		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
 
 		this.ls_selector = new Litestrike_Selector(server, this);
 		this.ko_selector = new Knockoff_Selector(server, this);
@@ -119,6 +127,10 @@ public class Velocity_plugin {
 	@Subscribe
 	public void onPluginMessageFromBackend(PluginMessageEvent event) {
 		if (!CRYSTAL_CHANNEL.equals(event.getIdentifier())) {
+			return;
+		}
+		if (event.getIdentifier().equals(CRYSTALIZED_ESSENTIALS)) {
+			event.getTarget().sendPluginMessage(CRYSTALIZED_ESSENTIALS, event.getData());
 			return;
 		}
 		event.setResult(PluginMessageEvent.ForwardResult.handled());
