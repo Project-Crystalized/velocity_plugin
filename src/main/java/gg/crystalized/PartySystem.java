@@ -12,6 +12,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
+import com.velocitypowered.api.command.CommandManager;
+import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.Player;
@@ -25,11 +27,11 @@ public class PartySystem {
 	public Set<Party> partys = ConcurrentHashMap.newKeySet();
 
 	public PartySystem(ProxyServer server, Velocity_plugin plugin) {
-		// CommandManager commandManager = server.getCommandManager();
-		// CommandMeta commandMetaParty =
-		// commandManager.metaBuilder("party").aliases("p").plugin(plugin).build();
-		// commandManager.register(commandMetaParty, new PartyCommand(this, plugin,
-		// server));
+		CommandManager commandManager = server.getCommandManager();
+		CommandMeta commandMetaParty =
+		commandManager.metaBuilder("party").aliases("p").plugin(plugin).build();
+		commandManager.register(commandMetaParty, new PartyCommand(this, plugin,
+		server));
 	}
 
 	public Party get_party_of(Player p) {
