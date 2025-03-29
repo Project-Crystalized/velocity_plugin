@@ -247,7 +247,7 @@ class PartyCommand implements SimpleCommand {
 				executer.sendMessage(text("You have not been invited to that party"));
 				return;
 			}
-			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + args[1] + "\" has joined your Party"));
+			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + mentioned_player.getUsername() + "\" has joined your Party"));
 			executer.sendMessage(text("You have joined the party of " + args[1]));
 			party_to_join.members.add(executer);
 			plugin.que_system.remove_player_from_que(executer);
