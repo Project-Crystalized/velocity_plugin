@@ -13,6 +13,7 @@ import com.velocitypowered.api.event.command.CommandExecuteEvent.CommandResult;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
+import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ConsoleCommandSource;
@@ -43,6 +44,7 @@ public class Velocity_plugin {
 	public QueSystem que_system;
 	public BanCommand ban_command;
 	public PartySystem party_system;
+	public FriendSystem friend_system;
 
 	public static boolean event_started = true;
 
@@ -90,6 +92,7 @@ public class Velocity_plugin {
 
 		this.party_system = new PartySystem(server, this);
 		this.que_system = new QueSystem(server, this);
+		this.friend_system = new FriendSystem(server, this);
 
 		CommandManager commandManager = server.getCommandManager();
 
@@ -121,7 +124,6 @@ public class Velocity_plugin {
 		if (ban_command.isBanned(e.getUniqueId())) {
 			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(text("you are banned")));
 		}
-
 	}
 
 	@Subscribe
@@ -153,6 +155,11 @@ public class Velocity_plugin {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
 		}
+	}
+
+	@Subscribe
+	public void onPreConnect(ServerPreConnectEvent e){
+		Friend.allFriends.add(new Friend(e.getPlayer()));
 	}
 
 	public static boolean is_admin(Player p) {
