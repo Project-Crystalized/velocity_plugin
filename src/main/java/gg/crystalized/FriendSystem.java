@@ -1,5 +1,7 @@
 package gg.crystalized;
 
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
@@ -43,7 +45,7 @@ class FriendsCommand implements SimpleCommand{
         }
         String[] args = invocation.arguments();
         if(args.length == 0){
-            return Arrays.asList("request", "remove", "list", "menu", "accept", "deny");
+            return Arrays.asList("request", "remove", "list"/*, "menu"*/, "accept", "deny");
         }
 
         if(args[0].equals("request")){
@@ -144,6 +146,42 @@ class FriendsCommand implements SimpleCommand{
             Databases.removeFriend(executer, uuid);
             executer.sendMessage(text("Removed " + args[1] + " from friends"));
         }
+
+        if(args[0].equals("list")){
+            ArrayList<String> friends = FriendSystem.getAllFriendsNames(executer);
+            ArrayList<String> online = new ArrayList<>();
+            for(Player p : server.getAllPlayers()){
+                if(friends.contains(p.getUsername())){
+                    online.add(p.getUsername());
+                    friends.remove(p.getUsername());
+                }
+            }
+
+            if(args[1].equals("online")){
+                StringBuilder message = new StringBuilder("These friends are currently online: ");
+                for(String s : online){
+                    message.append("\n").append(s);
+                }
+                executer.sendMessage(text(message.toString()));
+            }
+
+            if(args[1].equals("offline")){
+                StringBuilder message = new StringBuilder("These friends are currently offline: ");
+                for(String s : friends){
+                    message.append("\n s");
+                }
+                executer.sendMessage(text(message.toString()));
+            }
+        }
+        /*
+        if(args[0].equals("menu")){
+            ByteArrayDataOutput out = ByteStreams.newDataOutput();
+            out.writeUTF("Friend");
+            out.writeUTF("menu");
+
+        }
+        idk if I will make this command
+         */
     }
 }
 

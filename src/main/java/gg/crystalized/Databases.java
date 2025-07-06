@@ -1,6 +1,7 @@
 package gg.crystalized;
 
 import com.velocitypowered.api.proxy.Player;
+import net.kyori.adventure.text.Component;
 
 import java.nio.ByteBuffer;
 import java.sql.*;

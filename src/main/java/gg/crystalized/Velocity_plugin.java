@@ -26,8 +26,11 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
+
 import net.kyori.adventure.text.format.NamedTextColor;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -160,6 +163,14 @@ public class Velocity_plugin {
 	@Subscribe
 	public void onPreConnect(ServerPreConnectEvent e){
 		Friend.allFriends.add(new Friend(e.getPlayer()));
+		ArrayList<Object[]> list = Databases.fetchFriends(e.getPlayer());
+		for(Player p : server.getAllPlayers()){
+			for(Object[] o : list){
+				if(o[1] == Databases.uuid_to_bytes(p)){
+					p.sendMessage(text(e.getPlayer().getUsername() + " has come online").color(YELLOW));
+				}
+			}
+		}
 	}
 
 	public static boolean is_admin(Player p) {
@@ -297,7 +308,7 @@ class BroadCastCommand implements RawCommand {
 
 	@Override
 	public void execute(final Invocation invocation) {
-		Component message = text("!!IMPORTANT SERVER BROADCAST!!\n").color(NamedTextColor.YELLOW);
+		Component message = text("!!IMPORTANT SERVER BROADCAST!!\n").color(YELLOW);
 		message = message.append(text(invocation.arguments()));
 		message.append(text("\n"));
 		Audience.audience(server.getAllPlayers()).sendMessage(message);
