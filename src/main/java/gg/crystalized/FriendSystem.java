@@ -1,7 +1,5 @@
 package gg.crystalized;
 
-import com.google.common.io.ByteArrayDataOutput;
-import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
@@ -13,10 +11,11 @@ import net.kyori.adventure.text.event.ClickEvent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.GREEN;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 class FriendsCommand implements SimpleCommand{
 
@@ -104,13 +103,11 @@ class FriendsCommand implements SimpleCommand{
 
             executer.sendMessage(text("Sent " + args[1] + " a friend request!"));
             Friend.getFriendObject(requested).currentlyRequesting.add(executer);
-            Component accept = text("[Accept] ")
-                    .clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
-            Component deny = text("[Deny]")
-                    .clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
+            Component accept = text("[Accept] ").color(GREEN).clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
+            Component deny = text("[Deny]").color(RED).clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
             requested.sendMessage(text(executer.getUsername() + " send you a friend request ").append(accept).append(deny));
         }
-
+        //TODO test this ^
         if(args[0].equals("accept") || args[0].equals("deny")){
             Friend exe = Friend.getFriendObject(executer);
             Player requester = null;
@@ -158,6 +155,10 @@ class FriendsCommand implements SimpleCommand{
             }
 
             if(args[1].equals("online")){
+                if(online.isEmpty()){
+                    executer.sendMessage(text("None of your friends are currently online.").color(RED));
+                    return;
+                }
                 StringBuilder message = new StringBuilder("These friends are currently online: ");
                 for(String s : online){
                     message.append("\n").append(s);
@@ -166,6 +167,10 @@ class FriendsCommand implements SimpleCommand{
             }
 
             if(args[1].equals("offline")){
+                if(friends.isEmpty()){
+                    executer.sendMessage(text("None of your friends are currently offline.").color(RED));
+                    return;
+                }
                 StringBuilder message = new StringBuilder("These friends are currently offline: ");
                 for(String s : friends){
                     message.append("\n s");

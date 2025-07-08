@@ -109,6 +109,47 @@ public class Databases {
         }
     }
 
+    public static void updatePlayerNames(Player p){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            String makeNewEntry = "UPDATE LobbyPlayers SET player_name = ? WHERE player_uuid = ?";
+            PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
+            prepared.setString(1, p.getUsername());
+            prepared.setBytes(2, uuid_to_bytes(p));
+            prepared.executeUpdate();
+        }catch(SQLException e) {
+            //Bukkit.getLogger().warning(e.getMessage());
+            //Bukkit.getLogger().warning("couldn't make database entry for " + p.getName() + " UUID: " + p.getUniqueId());
+        }
+    }
+    /*
+    public static void updateSkin(Player p){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            String makeNewEntry = "UPDATE LobbyPlayers SET skin_url = ? WHERE player_uuid = ?";
+            PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
+            prepared.setString(1, p.getPlayerSettings().getTextures().getSkin().toString());
+            prepared.setBytes(2, uuid_to_bytes(p));
+            prepared.executeUpdate();
+        }catch(SQLException e) {
+            //Bukkit.getLogger().warning(e.getMessage());
+            //Bukkit.getLogger().warning("couldn't make database entry for " + p.getName() + " UUID: " + p.getUniqueId());
+        }
+    }
+     */
+    public static void setOnline(Player p, boolean online){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            String makeNewEntry = "UPDATE LobbyPlayers SET online = ? WHERE player_uuid = ?";
+            PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
+            int on = 0;
+            if(online) on = 1;
+            prepared.setInt(1, on);
+            prepared.setBytes(2, uuid_to_bytes(p));
+            prepared.executeUpdate();
+        }catch(SQLException e) {
+            //Bukkit.getLogger().warning(e.getMessage());
+            //Bukkit.getLogger().warning("couldn't make database entry for " + p.getName() + " UUID: " + p.getUniqueId());
+        }
+    }
+
     public static byte[] uuid_to_bytes(Player p) {
         ByteBuffer bb = ByteBuffer.allocate(16);
         UUID uuid = p.getUniqueId();

@@ -79,6 +79,7 @@ public class Velocity_plugin {
 	public void onDisconnect(DisconnectEvent e) {
 		que_system.remove_player_from_que(e.getPlayer());
 		party_system.remove_player(e.getPlayer());
+		Databases.setOnline(e.getPlayer(), false);
 	}
 
 	@Subscribe
@@ -162,6 +163,8 @@ public class Velocity_plugin {
 
 	@Subscribe
 	public void onPreConnect(ServerPreConnectEvent e){
+		Databases.updatePlayerNames(e.getPlayer());
+		Databases.setOnline(e.getPlayer(), true);
 		Friend.allFriends.add(new Friend(e.getPlayer()));
 		ArrayList<Object[]> list = Databases.fetchFriends(e.getPlayer());
 		for(Player p : server.getAllPlayers()){
