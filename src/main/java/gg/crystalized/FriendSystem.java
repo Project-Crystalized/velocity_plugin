@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.translatable;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.BOLD;
 
@@ -76,6 +77,7 @@ class FriendsCommand implements SimpleCommand{
 
     @Override
     public void execute(Invocation invocation) {
+        //TODO make it so the player can't friend themself
         String[] args = invocation.arguments();
         Player executer = (Player) invocation.source();
         if (args.length == 0) {
@@ -104,9 +106,9 @@ class FriendsCommand implements SimpleCommand{
 
             executer.sendMessage(text("Sent " + args[1] + " a friend request!").color(YELLOW));
             Friend.getFriendObject(requested).currentlyRequesting.add(executer);
-            Component accept = text("[Accept] ").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
-            Component deny = text("[Deny]").color(RED).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
-            requested.sendMessage(text(executer.getUsername() + " send you a friend request ").color(YELLOW).append(accept).append(deny));
+            Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
+            Component deny = translatable("crystalized.generic.deny").color(RED).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
+            requested.sendMessage(text(executer.getUsername() + " send you a friend request ").color(YELLOW).append(accept).append(text(" ")).append(deny));
         }
         //TODO test this ^
         if(args[0].equals("accept") || args[0].equals("deny")){

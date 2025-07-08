@@ -1,6 +1,9 @@
 package gg.crystalized;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.translatable;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
+import static net.kyori.adventure.text.format.TextDecoration.BOLD;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +25,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.TextColor;
 
 public class PartySystem {
 	public Set<Party> partys = ConcurrentHashMap.newKeySet();
@@ -182,12 +186,12 @@ class PartyCommand implements SimpleCommand {
 				|| args[0].equals("join") || args[0].equals("accept") || args[0].equals("kick") || args[0].equals("remove")
 				|| args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
 			if (args.length < 2) {
-				invocation.source().sendMessage(text("Please specify a player"));
+				invocation.source().sendMessage(text("Please specify a player").color(RED));
 				return;
 			}
 			mentioned_player = server.getPlayer(args[1]).orElse(null);
 			if (mentioned_player == null) {
-				invocation.source().sendMessage(text("Couldnt find Player \"" + args[1] + "\""));
+				invocation.source().sendMessage(text("Couldnt find Player \"" + args[1] + "\"").color(RED));
 				return;
 			}
 		}
@@ -199,7 +203,7 @@ class PartyCommand implements SimpleCommand {
 				|| args[0].equals("kick") || args[0].equals("leader") || args[0].equals("transfer")
 				|| args[0].equals("promote")) {
 			if (party == null) {
-				invocation.source().sendMessage(text("You are not in a party"));
+				invocation.source().sendMessage(text("You are not in a party").color(RED));
 				return;
 			}
 		}
@@ -208,7 +212,7 @@ class PartyCommand implements SimpleCommand {
 		if (args[0].equals("disband") || args[0].equals("remove") || args[0].equals("kick")
 				|| args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
 			if (!party.is_leader(executer)) {
-				invocation.source().sendMessage(text("You are not the leader of the party"));
+				invocation.source().sendMessage(text("You are not the leader of the party").color(RED));
 				return;
 			}
 		}
@@ -218,37 +222,37 @@ class PartyCommand implements SimpleCommand {
 
 		} else if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")) {
 			if (party == null) {
-				invocation.source().sendMessage(text("Creating a new party"));
+				invocation.source().sendMessage(text("Creating a new party").color(TextColor.color((float)250,(float) 180,(float) 245)));
 				party = new Party(executer);
 				ps.partys.add(party);
 			}
 			if (!party.is_leader(executer)) {
-				invocation.source().sendMessage(text("You are not the leader of the party"));
+				invocation.source().sendMessage(text("You are not the leader of the party").color(RED));
 				return;
 			}
-			Audience.audience(party.members).sendMessage(text("Player \"" + args[1] + "\" has been invited to your Party"));
+			Audience.audience(party.members).sendMessage(text("Player \"" + args[1] + "\" has been invited to your Party").color(TextColor.color((float)250,(float) 180,(float) 245)));
 			party.invited.remove(args[1]);
 			party.invited.add(args[1]);
+			Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/party join " + executer.getUsername()));
 			mentioned_player.sendMessage(
-					text("You have been invited to join the party of " + (executer).getUsername() + "\n [Accept]")
-							.clickEvent(ClickEvent.runCommand("/party join " + executer.getUsername())));
+					text("You have been invited to join the party of " + (executer).getUsername()).color(TextColor.color((float)250,(float) 180,(float) 245)).append(accept));
 
 		} else if (args[0].equals("join") || args[0].equals("accept")) {
 			if (party != null) {
-				invocation.source().sendMessage(text("You are already in a party"));
+				invocation.source().sendMessage(text("You are already in a party").color(RED));
 				return;
 			}
 			Party party_to_join = ps.get_party_of(server.getPlayer(args[1]).orElse(null));
 			if (party_to_join == null) {
-				invocation.source().sendMessage(text("This player is not in a party rn"));
+				invocation.source().sendMessage(text("This player is currently not in a party").color(RED));
 				return;
 			}
 			if (!party_to_join.invited.contains(executer.getUsername())) {
-				executer.sendMessage(text("You have not been invited to that party"));
+				executer.sendMessage(text("You have not been invited to that party").color(RED));
 				return;
 			}
-			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + mentioned_player.getUsername() + "\" has joined your Party"));
-			executer.sendMessage(text("You have joined the party of " + args[1]));
+			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + mentioned_player.getUsername() + "\" has joined your Party").color(TextColor.color((float)250,(float) 180,(float) 245)));
+			executer.sendMessage(text("You have joined the party of " + args[1]).color(TextColor.color((float)250,(float) 180,(float) 245)));
 			party_to_join.members.add(executer);
 			plugin.que_system.remove_player_from_que(executer);
 			if (QueSystem.ls_que.contains(party_to_join.members.get(0))) {
@@ -259,21 +263,21 @@ class PartyCommand implements SimpleCommand {
 
 		} else if (args[0].equals("kick") || args[0].equals("remove")) {
 			if (mentioned_player == executer) {
-				invocation.source().sendMessage(text("You cant kick yourself"));
+				invocation.source().sendMessage(text("You cant kick yourself").color(RED));
 				return;
 			}
 			if (!party.members.contains(mentioned_player)) {
-				invocation.source().sendMessage(text("Player \"" + args[1] + "\" was not in your party"));
+				invocation.source().sendMessage(text("Player \"" + args[1] + "\" was not in your party").color(RED));
 				return;
 			}
 			Audience.audience(party.members)
-					.sendMessage(text("Kicking Player \"" + args[1] + "\" from your party"));
+					.sendMessage(text("Kicking Player \"" + args[1] + "\" from your party").color(TextColor.color((float)250,(float) 180,(float) 245)));
 			party.invited.remove(args[1]);
 			ps.remove_player(mentioned_player);
 			plugin.que_system.remove_player_from_que(mentioned_player);
 
 		} else if (args[0].equals("disband")) {
-			Audience.audience(party.members).sendMessage(text("Your party has been disbanded"));
+			Audience.audience(party.members).sendMessage(text("Your party has been disbanded").color(TextColor.color((float)250,(float) 180,(float) 245)));
 			ps.partys.remove(party);
 			for (Player p : party.members) {
 				plugin.que_system.remove_player_from_que(p);
@@ -287,7 +291,7 @@ class PartyCommand implements SimpleCommand {
 			int promoted_index = party.members.indexOf(mentioned_player);
 			Collections.swap(party.members, 0, promoted_index);
 			Audience.audience(party.members)
-					.sendMessage(text("Promoting \"" + args[1] + "\" to party leader"));
+					.sendMessage(text("Promoting \"" + args[1] + "\" to party leader").color(TextColor.color((float)250,(float) 180,(float) 245)));
 		}
 
 		// we are here if the command succeded, so we now update the party
