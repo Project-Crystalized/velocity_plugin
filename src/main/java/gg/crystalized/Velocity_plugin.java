@@ -269,7 +269,7 @@ class MsgCommand implements SimpleCommand {
 		}
 		Player p = server.getPlayer(invocation.arguments()[0]).orElse(null);
 		if (p == null) {
-			invocation.source().sendMessage(text("Couldnt find that player"));
+			invocation.source().sendMessage(text("Couldn't find that player"));
 			return;
 		}
 		Component message = text("");
@@ -279,8 +279,8 @@ class MsgCommand implements SimpleCommand {
 			message = message.append(text(" " + arg));
 		}
 		invocation.source()
-				.sendMessage(text("[You -> " + p.getUsername() + "] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
-		p.sendMessage(text("[" + messenger_name + " -> You] ").append(message).color(NamedTextColor.LIGHT_PURPLE));
+				.sendMessage(text("[You -> " + p.getUsername() + "] ").append(message).color(NamedTextColor.AQUA));
+		p.sendMessage(text("[" + messenger_name + " -> You] ").append(message).color(NamedTextColor.AQUA));
 	}
 
 	@Override

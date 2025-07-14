@@ -3,6 +3,7 @@ package gg.crystalized;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 
+
 import java.nio.ByteBuffer;
 import java.sql.*;
 import java.time.LocalDate;
@@ -27,8 +28,8 @@ public class Databases {
             }
             return map;
         }catch(SQLException e){
-            //Bukkit.getLogger().warning(e.getMessage());
-            //Bukkit.getLogger().warning("couldn't get data for " + p.getName() + "UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get data for " + p.getUsername() + "UUID: " + p.getUniqueId());
             return null;
         }
     }
@@ -47,8 +48,8 @@ public class Databases {
             }
             return map;
         } catch (SQLException e) {
-            //Bukkit.getLogger().warning(e.getMessage());
-            //Bukkit.getLogger().warning("couldn't get data for " + p.getName() + "UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get data for byte[]");
             return null;
         }
     }
@@ -72,25 +73,29 @@ public class Databases {
             }
             return list;
         }catch(SQLException e){
-            //Bukkit.getLogger().warning(e.getMessage());
-            //Bukkit.getLogger().warning("couldn't get friend data for " + p.getName() + " UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get friend data for " + p.getUsername() + " UUID: " + p.getUniqueId());
             return null;
         }
     }
 
     public static void addFriend(Player p, Player friend){
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
+        try{
+            Connection conn = DriverManager.getConnection(LOBBY);
             PreparedStatement prep = conn.prepareStatement("INSERT INTO Friends(player_uuid, friend_uuid, date) VALUES(?, ?, ?);");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, uuid_to_bytes(friend));
             String date = "";
             LocalDate now = LocalDate.now();
-            date = date + now.getDayOfMonth() + "-" + now.getMonth() + "-" + now.getYear();
+            date = date + now.getDayOfMonth() + " " + styleWord(now.getMonth().toString()) + " " + now.getYear();
             prep.setString(3, date);
             prep.executeUpdate();
-        }catch(SQLException e){
-            //Bukkit.getLogger().warning(e.getMessage());
-            //Bukkit.getLogger().warning("failed adding cosmetic to database");
+            prep.setBytes(1, uuid_to_bytes(friend));
+            prep.setBytes(2, uuid_to_bytes(p));
+            prep.executeUpdate();
+        }catch(Exception e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("failed adding friends to database");
         }
     }
 
@@ -103,9 +108,9 @@ public class Databases {
             prep.setBytes(1, friend);
             prep.setBytes(2, uuid_to_bytes(p));
             prep.executeUpdate();
-        }catch(SQLException e){
-            //Bukkit.getLogger().warning(e.getMessage());
-            //Bukkit.getLogger().warning("failed adding cosmetic to database");
+        }catch(Exception e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("failed adding cosmetic to database");
         }
     }
 
@@ -117,8 +122,8 @@ public class Databases {
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
         }catch(SQLException e) {
-            //Bukkit.getLogger().warning(e.getMessage());
-            //Bukkit.getLogger().warning("couldn't make database entry for " + p.getName() + " UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
         }
     }
     /*
@@ -145,8 +150,8 @@ public class Databases {
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
         }catch(SQLException e) {
-            //Bukkit.getLogger().warning(e.getMessage());
-            //Bukkit.getLogger().warning("couldn't make database entry for " + p.getName() + " UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
         }
     }
 
@@ -156,5 +161,48 @@ public class Databases {
         bb.putLong(uuid.getMostSignificantBits());
         bb.putLong(uuid.getLeastSignificantBits());
         return bb.array();
+    }
+
+    public static String styleWord(String word){
+        word = word.toLowerCase();
+        char[] c = word.toCharArray();
+        c[0] = Character.toUpperCase(c[0]);
+        StringBuilder s = new StringBuilder();
+        for(char ch : c){
+            s.append(ch);
+        }
+        return s.toString();
+    }
+
+    public static boolean areFriends(Player p, Player friend){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT COUNT(*) AS count FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(p));
+            prep.setBytes(2, uuid_to_bytes(friend));
+            if(prep.executeQuery().getInt("count") > 0){
+                return true;
+            }
+            return false;
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't check excistence in database for " + p.getUsername() + " UUID: " + p.getUniqueId());
+            return false;
+        }
+    }
+
+    public static boolean areFriends(Player p, byte[] friend){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT COUNT(*) AS count FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(p));
+            prep.setBytes(2, friend);
+            if(prep.executeQuery().getInt("count") > 0){
+                return true;
+            }
+            return false;
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't check excistence in database for " + p.getUsername() + " UUID: " + p.getUniqueId());
+            return false;
+        }
     }
 }

@@ -9,9 +9,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.translatable;
@@ -45,7 +43,7 @@ class FriendsCommand implements SimpleCommand{
         }
         String[] args = invocation.arguments();
         if(args.length == 0){
-            return Arrays.asList("request", "remove", "list"/*, "menu"*/, "accept", "deny");
+            return Arrays.asList("request", "remove", "list", "accept", "deny");
         }
 
         if(args[0].equals("request")){
@@ -86,66 +84,9 @@ class FriendsCommand implements SimpleCommand{
 
         if(args[0].equals("request") || args[0].equals("remove") || args[0].equals("accept") || args[0].equals("deny")){
             if(args.length < 2){
+                executer.sendMessage(text("Please specify a player").color(RED));
                 return;
             }
-        }
-
-        if(args[0].equals("request")){
-            Player requested = null;
-            for(Player p : server.getAllPlayers()){
-                if(p.getUsername().equals(args[1])){
-                    requested = p;
-                    break;
-                }
-            }
-
-            if(requested == null){
-                executer.sendMessage(text("There are no online players called " + args[0]).color(RED));
-                return;
-            }
-
-            executer.sendMessage(text("Sent " + args[1] + " a friend request!").color(YELLOW));
-            Friend.getFriendObject(requested).currentlyRequesting.add(executer);
-            Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
-            Component deny = translatable("crystalized.generic.deny").color(RED).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
-            requested.sendMessage(text(executer.getUsername() + " send you a friend request ").color(YELLOW).append(accept).append(text(" ")).append(deny));
-        }
-        //TODO test this ^
-        if(args[0].equals("accept") || args[0].equals("deny")){
-            Friend exe = Friend.getFriendObject(executer);
-            Player requester = null;
-            for(Player p : server.getAllPlayers()){
-                if(p.getUsername().equals(args[1])){
-                    requester = p;
-                    break;
-                }
-            }
-            if(!exe.currentlyRequesting.contains(requester)){
-                executer.sendMessage(text("There are no pending friend requests from " + requester.getUsername()).color(RED));
-                return;
-            }
-            if(args[0].equals("accept")){
-                Databases.addFriend(executer, requester);
-                requester.sendMessage(text(executer.getUsername() + " has accepted your friend request").color(YELLOW));
-                executer.sendMessage(text("Accepted friend request from " + requester.getUsername()).color(YELLOW));
-            }
-
-            if(args[0].equals("deny")) {
-                executer.sendMessage(text("Denied friend request from " + requester.getUsername()).color(YELLOW)); // TODO put a better message
-            }
-            exe.currentlyRequesting.remove(requester);
-        }
-
-        if(args[0].equals("remove")){
-            ArrayList<Object[]> list = Databases.fetchFriends(executer);
-            byte[] uuid = null;
-            for (Object[] o : list) {
-                if((Databases.fetchPlayerData((byte[]) o[1]).get("player_name")).equals(args[1])){
-                    uuid = (byte[])o[1];
-                }
-            }
-            Databases.removeFriend(executer, uuid);
-            executer.sendMessage(text("Removed " + args[1] + " from friends").color(YELLOW));
         }
 
         if(args[0].equals("list")){
@@ -168,6 +109,7 @@ class FriendsCommand implements SimpleCommand{
                     message = message.append(text("\n" + s));
                 }
                 executer.sendMessage(message);
+                return;
             }
 
             if(args[1].equals("offline")){
@@ -180,23 +122,86 @@ class FriendsCommand implements SimpleCommand{
                     message = message.append(text("\n" + s));
                 }
                 executer.sendMessage(message);
+                return;
             }
         }
-        /*
-        if(args[0].equals("menu")){
-            ByteArrayDataOutput out = ByteStreams.newDataOutput();
-            out.writeUTF("Friend");
-            out.writeUTF("menu");
 
+        if(Objects.equals(args[1], executer.getUsername())){
+            executer.sendMessage(text("Please input a player who's not you").color(RED));
+            return;
         }
-        idk if I will make this command
-         */
+
+        if(args[0].equals("request")){
+            Player requested = null;
+            for(Player p : server.getAllPlayers()){
+                if(p.getUsername().equals(args[1])){
+                    requested = p;
+                    break;
+                }
+            }
+
+            if(requested == null){
+                executer.sendMessage(text("There are no online players called " + args[1]).color(RED));
+                return;
+            }
+            if(Databases.areFriends(executer, requested)){
+                executer.sendMessage(text("You are already friends with " + args[1]).color(RED));
+                return;
+            }
+
+            executer.sendMessage(text("Sent " + args[1] + " a friend request!").color(YELLOW));
+            Friend.getFriendObject(requested).currentlyRequesting.add(executer);
+            Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
+            Component deny = translatable("crystalized.generic.deny").color(RED).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
+            requested.sendMessage(text(executer.getUsername() + " send you a friend request ").color(YELLOW).append(accept).append(text(" ")).append(deny));
+        }
+
+        if(args[0].equals("accept") || args[0].equals("deny")){
+            Friend exe = Friend.getFriendObject(executer);
+            Player requester = null;
+            for(Player p : server.getAllPlayers()){
+                if(p.getUsername().equals(args[1])){
+                    requester = p;
+                    break;
+                }
+            }
+            if(!exe.currentlyRequesting.contains(requester)){
+                executer.sendMessage(text("There are no pending friend requests from " + requester.getUsername()).color(RED));
+                return;
+            }
+            if(args[0].equals("accept")){
+                Databases.addFriend(executer, requester);
+                requester.sendMessage(text(executer.getUsername() + " has accepted your friend request").color(YELLOW));
+                executer.sendMessage(text("Accepted friend request from " + requester.getUsername()).color(YELLOW));
+            }
+
+            if(args[0].equals("deny")) {
+                executer.sendMessage(text("Denied friend request from " + requester.getUsername()).color(YELLOW));
+            }
+            exe.currentlyRequesting.remove(requester);
+        }
+
+        if(args[0].equals("remove")){
+            ArrayList<Object[]> list = Databases.fetchFriends(executer);
+            byte[] uuid = null;
+            for (Object[] o : list) {
+                if((Databases.fetchPlayerData((byte[]) o[1]).get("player_name")).equals(args[1])){
+                    uuid = (byte[])o[1];
+                }
+            }
+            if(!Databases.areFriends(executer, uuid)){
+                executer.sendMessage(text(args[1] + " is not your friend").color(RED));
+                return;
+            }
+            Databases.removeFriend(executer, uuid);
+            executer.sendMessage(text("Removed " + args[1] + " from friends").color(YELLOW));
+        }
+
     }
 }
 
 public class FriendSystem {
     public static ProxyServer server;
-
     public FriendSystem(ProxyServer server, Velocity_plugin plugin) {
         CommandManager commandManager = server.getCommandManager();
         CommandMeta commandMetaParty =
