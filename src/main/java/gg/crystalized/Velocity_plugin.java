@@ -3,10 +3,7 @@ package gg.crystalized;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteStreams;
 import com.google.inject.Inject;
-import com.velocitypowered.api.command.CommandManager;
-import com.velocitypowered.api.command.CommandMeta;
-import com.velocitypowered.api.command.RawCommand;
-import com.velocitypowered.api.command.SimpleCommand;
+import com.velocitypowered.api.command.*;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.command.CommandExecuteEvent.CommandResult;
@@ -26,8 +23,10 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.event.ClickEvent.Action.RUN_COMMAND;
 import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.ArrayList;
@@ -146,6 +145,24 @@ public class Velocity_plugin {
 
 		ByteArrayDataInput in = ByteStreams.newDataInput(event.getData());
 		String message1 = in.readUTF();
+		if(message1.contains("Party")){
+			String message2 = in.readUTF();
+			if(message2.contains("invite")){
+				String message3 = in.readUTF();
+				String command = "party invite " + message3;
+				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
+			}
+		}
+
+		if(message1.contains("Friend")){
+			String message2 = in.readUTF();
+			if(message2.contains("remove")){
+				String message3 = in.readUTF();
+				String command = "friend remove " + message3;
+				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
+			}
+		}
+
 		if (!(message1.contains("Connect"))) {
 			return;
 		}

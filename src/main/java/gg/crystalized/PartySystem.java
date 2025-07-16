@@ -230,12 +230,12 @@ class PartyCommand implements SimpleCommand {
 				invocation.source().sendMessage(text("You are not the leader of the party").color(RED));
 				return;
 			}
-			Audience.audience(party.members).sendMessage(text("Player \"" + args[1] + "\" has been invited to your Party").color(TextColor.color((float)250,(float) 180,(float) 245)));
+			Audience.audience(party.members).sendMessage(text("Player \"" + args[1] + "\" has been invited to your Party").color(TextColor.fromHexString("#f299da")));
 			party.invited.remove(args[1]);
 			party.invited.add(args[1]);
 			Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/party join " + executer.getUsername()));
 			mentioned_player.sendMessage(
-					text("You have been invited to join the party of " + (executer).getUsername()).color(TextColor.color((float)250,(float) 180,(float) 245)).append(accept));
+					text("You have been invited to join the party of " + (executer).getUsername()).color(TextColor.fromHexString("#f299da")).append(accept));
 
 		} else if (args[0].equals("join") || args[0].equals("accept")) {
 			if (party != null) {
@@ -251,8 +251,8 @@ class PartyCommand implements SimpleCommand {
 				executer.sendMessage(text("You have not been invited to that party").color(RED));
 				return;
 			}
-			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + mentioned_player.getUsername() + "\" has joined your Party").color(TextColor.color((float)250,(float) 180,(float) 245)));
-			executer.sendMessage(text("You have joined the party of " + args[1]).color(TextColor.color((float)250,(float) 180,(float) 245)));
+			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + mentioned_player.getUsername() + "\" has joined your Party").color(TextColor.fromHexString("#f299da")));
+			executer.sendMessage(text("You have joined the party of " + args[1]).color(TextColor.fromHexString("#f299da")));
 			party_to_join.members.add(executer);
 			plugin.que_system.remove_player_from_que(executer);
 			if (QueSystem.ls_que.contains(party_to_join.members.get(0))) {
@@ -271,13 +271,13 @@ class PartyCommand implements SimpleCommand {
 				return;
 			}
 			Audience.audience(party.members)
-					.sendMessage(text("Kicking Player \"" + args[1] + "\" from your party").color(TextColor.color((float)250,(float) 180,(float) 245)));
+					.sendMessage(text("Kicking Player \"" + args[1] + "\" from your party").color(TextColor.fromHexString("#f299da")));
 			party.invited.remove(args[1]);
 			ps.remove_player(mentioned_player);
 			plugin.que_system.remove_player_from_que(mentioned_player);
 
 		} else if (args[0].equals("disband")) {
-			Audience.audience(party.members).sendMessage(text("Your party has been disbanded").color(TextColor.color((float)250,(float) 180,(float) 245)));
+			Audience.audience(party.members).sendMessage(text("Your party has been disbanded").color(TextColor.fromHexString("#f299da")));
 			ps.partys.remove(party);
 			for (Player p : party.members) {
 				plugin.que_system.remove_player_from_que(p);
@@ -291,7 +291,7 @@ class PartyCommand implements SimpleCommand {
 			int promoted_index = party.members.indexOf(mentioned_player);
 			Collections.swap(party.members, 0, promoted_index);
 			Audience.audience(party.members)
-					.sendMessage(text("Promoting \"" + args[1] + "\" to party leader").color(TextColor.color((float)250,(float) 180,(float) 245)));
+					.sendMessage(text("Promoting \"" + args[1] + "\" to party leader").color(TextColor.fromHexString("#f299da")));
 		}
 
 		// we are here if the command succeded, so we now update the party
