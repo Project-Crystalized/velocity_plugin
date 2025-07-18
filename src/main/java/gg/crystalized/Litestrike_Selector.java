@@ -21,6 +21,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 public class Litestrike_Selector implements ServerSelector {
 
@@ -74,7 +75,7 @@ public class Litestrike_Selector implements ServerSelector {
 		Party party = plugin.party_system.get_party_of(p);
 		if (party != null) {
 			if (!party.is_leader(p)) {
-				p.sendMessage(text("You must be the party leader to join the que"));
+				p.sendMessage(text("You must be the party leader to join the queue").color(RED));
 				return;
 			}
 			for (Player player : party.members) {
@@ -181,7 +182,7 @@ public class Litestrike_Selector implements ServerSelector {
 		}
 
 		if (online == games_going) {
-			return Component.text("Server status: No Litestrike Server is available atm. \n").color(NamedTextColor.RED)
+			return Component.text("Server status: No Litestrike Server is available atm. \n").color(RED)
 					.append(Component.text("Registered servers: " + registerd + " | Online servers: " + online
 							+ " | Ongoing games: " + games_going).color(NamedTextColor.WHITE));
 		} else {

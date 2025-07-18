@@ -222,7 +222,7 @@ class PartyCommand implements SimpleCommand {
 
 		} else if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")) {
 			if (party == null) {
-				invocation.source().sendMessage(text("Creating a new party").color(TextColor.color((float)250,(float) 180,(float) 245)));
+				invocation.source().sendMessage(text("Creating a new party").color(DARK_PURPLE));
 				party = new Party(executer);
 				ps.partys.add(party);
 			}
@@ -256,9 +256,9 @@ class PartyCommand implements SimpleCommand {
 			party_to_join.members.add(executer);
 			plugin.que_system.remove_player_from_que(executer);
 			if (QueSystem.ls_que.contains(party_to_join.members.get(0))) {
-				QueSystem.ls_que.add_player(executer);
+				QueSystem.ls_que.add_player(executer, true);
 			} else if (QueSystem.ko_que.contains(party_to_join.members.get(0))) {
-				QueSystem.ko_que.add_player(executer);
+				QueSystem.ko_que.add_player(executer, true);
 			}
 
 		} else if (args[0].equals("kick") || args[0].equals("remove")) {

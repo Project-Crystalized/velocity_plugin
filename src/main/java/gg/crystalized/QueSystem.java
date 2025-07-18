@@ -11,8 +11,10 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 public class QueSystem {
 	public static GameQue ls_que;
@@ -88,7 +90,7 @@ class UnqueCommand implements SimpleCommand {
 	@Override
 	public void execute(Invocation invocation) {
 		if (!(invocation.source() instanceof Player)) {
-			invocation.source().sendMessage(text("Only players can execute this command!").color(NamedTextColor.RED));
+			invocation.source().sendMessage(text("Only players can execute this command!").color(RED));
 			return;
 		}
 		plugin.que_system.remove_player_from_que((Player) invocation.source());
@@ -131,7 +133,7 @@ class GameQue {
 		return players.contains(p);
 	}
 
-	public void add_player(Player p) {
+	public void add_player(Player p, boolean connect) {
 		if (qs.is_in_a_que(p)) {
 			selector.send_player(p);
 			return;
@@ -139,24 +141,26 @@ class GameQue {
 		Party party = plugin.party_system.get_party_of(p);
 		if (party != null) {
 			if (!party.is_leader(p)) {
-				p.sendMessage(text("You must be the party leader to join the que"));
+				p.sendMessage(text("You must be the party leader to join the queue").color(RED));
 				return;
 			}
 			if (party.members.size() + players.size() > max_players) {
-				p.sendMessage(text("You party is too large to join the current que, please wait for a bit."));
+				p.sendMessage(text("Your party is too large to join the current que, please wait for a bit.").color(RED));
 				return;
 			}
 			for (Player member : party.members) {
 				selector.send_player(member);
 			}
 			players.addAll(party.members);
-			Audience.audience(party.members).sendMessage(text("Your party has entered the que"));
+			Audience.audience(party.members).sendMessage(text("Your party has entered the queue").color(TextColor.fromHexString("#f299da")));
 		} else {
 			if (players.size() >= max_players) {
-				p.sendMessage(text("The que is already full, a game is starting rn. Please wait a few seconds."));
+				p.sendMessage(text("The queue is already full, a game is starting rn. Please wait a few seconds.").color(RED));
 				return;
 			}
-			selector.send_player(p);
+			if(connect) {
+				selector.send_player(p);
+			}
 			players.add(p);
 		}
 	}

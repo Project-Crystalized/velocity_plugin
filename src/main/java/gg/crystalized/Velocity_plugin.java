@@ -168,13 +168,22 @@ public class Velocity_plugin {
 		}
 
 		String message2 = in.readUTF();
+
+		String message3 = in.readUTF();
+		boolean connect = true;
+		if(message3 != null && message3.contains("false")){
+			connect = false;
+		}
 		if (message2.contains("litestrike")) {
-			QueSystem.ls_que.add_player(backend_conn.getPlayer());
+				QueSystem.ls_que.add_player(backend_conn.getPlayer(), connect);
 		} else if (message2.contains("knockoff")) {
-			QueSystem.ko_que.add_player(backend_conn.getPlayer());
+			QueSystem.ko_que.add_player(backend_conn.getPlayer(), connect);
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
+			if(connect){
+				que_system.remove_player_from_que(backend_conn.getPlayer());
+			}
 		}
 	}
 
