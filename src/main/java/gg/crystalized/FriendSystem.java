@@ -90,7 +90,18 @@ class FriendsCommand implements SimpleCommand{
         }
 
         if(args[0].equals("list")){
+
             ArrayList<String> friends = FriendSystem.getAllFriendsNames(executer);
+
+            if(args.length < 2){
+                Component message = text("These are all of your friends: ").color(YELLOW);
+                for(String s : friends){
+                    message = message.append(text("\n" + s));
+                }
+                executer.sendMessage(message);
+                return;
+            }
+
             ArrayList<String> online = new ArrayList<>();
             for(Player p : server.getAllPlayers()){
                 if(friends.contains(p.getUsername())){

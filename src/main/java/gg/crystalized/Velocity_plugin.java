@@ -147,10 +147,13 @@ public class Velocity_plugin {
 		String message1 = in.readUTF();
 		if(message1.contains("Party")){
 			String message2 = in.readUTF();
+			String message3 = in.readUTF();
 			if(message2.contains("invite")){
-				String message3 = in.readUTF();
 				String command = "party invite " + message3;
 				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
+			}else if(message2.contains("members")){
+				Party party = this.party_system.get_party_of(backend_conn.getPlayer());
+				backend_conn.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, party.update_message().toByteArray());
 			}
 		}
 
