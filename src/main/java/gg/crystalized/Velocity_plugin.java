@@ -1,6 +1,7 @@
 package gg.crystalized;
 
 import com.google.common.io.ByteArrayDataInput;
+import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.google.inject.Inject;
 import com.velocitypowered.api.command.*;
@@ -147,13 +148,23 @@ public class Velocity_plugin {
 		String message1 = in.readUTF();
 		if(message1.contains("Party")){
 			String message2 = in.readUTF();
-			String message3 = in.readUTF();
 			if(message2.contains("invite")){
+				String message3 = in.readUTF();
 				String command = "party invite " + message3;
 				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
 			}else if(message2.contains("members")){
 				Party party = this.party_system.get_party_of(backend_conn.getPlayer());
+				ByteArrayDataOutput out = ByteStreams.newDataOutput();
+				if(party == null){
+					out.writeUTF("Party");
+					backend_conn.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+					return;
+				}
 				backend_conn.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, party.update_message().toByteArray());
+			}else if(message2.contains("remove")){
+				String message3 = in.readUTF();
+				String command = "party remove " + message3;
+				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
 			}
 		}
 
@@ -162,6 +173,10 @@ public class Velocity_plugin {
 			if(message2.contains("remove")){
 				String message3 = in.readUTF();
 				String command = "friend remove " + message3;
+				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
+			}else if(message2.contains("add")){
+				String message3 = in.readUTF();
+				String command = "friend request " + message3;
 				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
 			}
 		}
