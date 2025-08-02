@@ -44,6 +44,7 @@ public class Velocity_plugin {
 	public static Logger logger;
 	public Litestrike_Selector ls_selector;
 	public Knockoff_Selector ko_selector;
+	public CrystalBlitz_Selector cb_selector;
 	public QueSystem que_system;
 	public BanCommand ban_command;
 	public PartySystem party_system;
@@ -54,6 +55,7 @@ public class Velocity_plugin {
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
 	public static final MinecraftChannelIdentifier LS_CHANNEL = MinecraftChannelIdentifier.from("crystalized:litestrike");
 	public static final MinecraftChannelIdentifier KO_CHANNEL = MinecraftChannelIdentifier.from("crystalized:knockoff");
+	public static final MinecraftChannelIdentifier CB_CHANNEL = MinecraftChannelIdentifier.from("crystalized:crystalblitz");
 	public static final MinecraftChannelIdentifier CRYSTALIZED_ESSENTIALS = MinecraftChannelIdentifier.from("crystalized:essentials");
 
 	@Inject
@@ -87,12 +89,15 @@ public class Velocity_plugin {
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
 		server.getChannelRegistrar().register(LS_CHANNEL);
 		server.getChannelRegistrar().register(KO_CHANNEL);
+		server.getChannelRegistrar().register(CB_CHANNEL);
 		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
 
 		this.ls_selector = new Litestrike_Selector(server, this);
 		this.ko_selector = new Knockoff_Selector(server, this);
+		this.cb_selector = new CrystalBlitz_Selector(server, this);
 		server.getEventManager().register(this, ls_selector);
 		server.getEventManager().register(this, ko_selector);
+		server.getEventManager().register(this, cb_selector);
 
 		this.party_system = new PartySystem(server, this);
 		this.que_system = new QueSystem(server, this);
@@ -126,7 +131,7 @@ public class Velocity_plugin {
 	@Subscribe
 	public void onPreConnect(PreLoginEvent e) {
 		if (ban_command.isBanned(e.getUniqueId())) {
-			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(text("you are banned")));
+			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(text("you are banned"))); //TODO make this message look nice or smth
 		}
 	}
 
@@ -196,6 +201,8 @@ public class Velocity_plugin {
 				QueSystem.ls_que.add_player(backend_conn.getPlayer(), connect);
 		} else if (message2.contains("knockoff")) {
 			QueSystem.ko_que.add_player(backend_conn.getPlayer(), connect);
+		} else if (message2.contains("crystalblitz")) {
+			QueSystem.cb_que.add_player(backend_conn.getPlayer(), connect);
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
@@ -223,6 +230,7 @@ public class Velocity_plugin {
 	public static boolean is_admin(Player p) {
 		if (p.getUsername().equals("cooltexture")
 				|| p.getUsername().equals("Callum_Is_Bad")
+				|| p.getUsername().equals(".CallumIsBad6502")
 				|| p.getUsername().equals("LadyCat_")
 				|| p.getUsername().equals("___mira___")) {
 			return true;

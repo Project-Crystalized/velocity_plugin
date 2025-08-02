@@ -19,20 +19,24 @@ import static net.kyori.adventure.text.format.NamedTextColor.RED;
 public class QueSystem {
 	public static GameQue ls_que;
 	public static GameQue ko_que;
+	public static GameQue cb_que;
 	private Velocity_plugin plugin;
 	private ProxyServer server;
 
 	public static final int LS_NEEDED_TO_START = 6;
 	public static final int KO_NEEDED_TO_START = 4;
+	public static final int CB_NEEDED_TO_START = 4;
 
 	public static final int LS_MAX_PLAYERS = 8;
-	public static final int KO_MAX_PLAYERS = 16;
+	public static final int KO_MAX_PLAYERS = 12; //12 is max for solos, 24 is max for duos - Callum
+	public static final int CB_MAX_PLAYERS = 8; //temporary probably - Callum
 
 	public QueSystem(ProxyServer server, Velocity_plugin plugin) {
 		this.plugin = plugin;
 
 		ls_que = new GameQue(this, plugin, LS_MAX_PLAYERS, plugin.ls_selector);
 		ko_que = new GameQue(this, plugin, KO_MAX_PLAYERS, plugin.ko_selector);
+		cb_que = new GameQue(this, plugin, CB_MAX_PLAYERS, plugin.cb_selector);
 		this.server = server;
 
 		server.getScheduler().buildTask(plugin, () -> {
@@ -44,18 +48,21 @@ public class QueSystem {
 			if (ko_que.size() >= KO_NEEDED_TO_START) {
 				ko_que.send_players(plugin.ko_selector);
 			}
+			if (cb_que.size() >= CB_NEEDED_TO_START) {
+				cb_que.send_players(plugin.cb_selector);
+			}
 		}).repeat(1, TimeUnit.SECONDS).schedule();
 
 	}
 
 	public void remove_player_from_que(Player p) {
-		if (ls_que.remove_player(p) || ko_que.remove_player(p)) {
+		if (ls_que.remove_player(p) || ko_que.remove_player(p) || cb_que.remove_player(p)) {
 			p.createConnectionRequest(server.getServer("lobby").get()).connect();
 		}
 		Party party = plugin.party_system.get_party_of(p);
 		if (party != null) {
 			for (Player player : party.members) {
-				if (ls_que.remove_player(player) || ko_que.remove_player(player)) {
+				if (ls_que.remove_player(player) || ko_que.remove_player(player) || cb_que.remove_player(player)) {
 					player.createConnectionRequest(server.getServer("lobby").get()).connect();
 				}
 			}
@@ -63,7 +70,7 @@ public class QueSystem {
 	}
 
 	public boolean is_in_a_que(Player p) {
-		if (ls_que.contains(p) || ko_que.contains(p)) {
+		if (ls_que.contains(p) || ko_que.contains(p) || cb_que.contains(p)) {
 			p.sendMessage(text("You are already queued for a game"));
 			return true;
 		}
@@ -76,6 +83,9 @@ public class QueSystem {
 				.append(text("Run /unque to leave the queue")));
 		ko_que.get_players().sendActionBar(text("You are in queue for Knockoff! ")
 				.append(text("(" + ko_que.size() + "/" + KO_NEEDED_TO_START + ") "))
+				.append(text("Run /unque to leave the queue")));
+		cb_que.get_players().sendActionBar(text("You are in queue for Crystal Blitz! ")
+				.append(text("(" + cb_que.size() + "/" + CB_NEEDED_TO_START + ") "))
 				.append(text("Run /unque to leave the queue")));
 	}
 }
