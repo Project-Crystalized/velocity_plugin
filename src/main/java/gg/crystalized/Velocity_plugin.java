@@ -40,7 +40,7 @@ import org.slf4j.Logger;
 		"crystalized_team" })
 public class Velocity_plugin {
 
-	private final ProxyServer server;
+	public final ProxyServer server;
 	public static Logger logger;
 	public Litestrike_Selector ls_selector;
 	public Knockoff_Selector ko_selector;

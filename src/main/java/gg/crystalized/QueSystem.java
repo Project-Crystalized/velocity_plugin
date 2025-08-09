@@ -1,5 +1,6 @@
 package gg.crystalized;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,10 +11,13 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 
 import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.translatable;
 import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 public class QueSystem {
@@ -78,15 +82,26 @@ public class QueSystem {
 	}
 
 	private void show_action_bars() {
-		ls_que.get_players().sendActionBar(text("You are in queue for Litestrike! ")
-				.append(text("(" + ls_que.size() + "/" + LS_NEEDED_TO_START + ") "))
-				.append(text("Run /unque to leave the queue")));
-		ko_que.get_players().sendActionBar(text("You are in queue for Knockoff! ")
-				.append(text("(" + ko_que.size() + "/" + KO_NEEDED_TO_START + ") "))
-				.append(text("Run /unque to leave the queue")));
-		cb_que.get_players().sendActionBar(text("You are in queue for Crystal Blitz! ")
-				.append(text("(" + cb_que.size() + "/" + CB_NEEDED_TO_START + ") "))
-				.append(text("Run /unque to leave the queue")));
+		for (Player p : plugin.server.getAllPlayers()) {
+			List<Component> translatableList = new ArrayList<>();
+
+			if (ls_que.contains(p)) {
+				translatableList.add(translatable("crystalized.game.litestrike.name"));
+				translatableList.add(text(ls_que.size()));
+				translatableList.add(text(LS_NEEDED_TO_START));
+			} else if (ko_que.contains(p)) {
+				translatableList.add(translatable("crystalized.game.knockoff.name"));
+				translatableList.add(text(ko_que.size()));
+				translatableList.add(text(KO_NEEDED_TO_START));
+			} else if (cb_que.contains(p)) {
+				translatableList.add(translatable("crystalized.game.crystalblitz.name"));
+				translatableList.add(text(cb_que.size()));
+				translatableList.add(text(CB_NEEDED_TO_START));
+			}
+			if (!translatableList.isEmpty()) {
+				p.sendActionBar(translatable("crystalized.generic.queue.actionbar", translatableList));
+			}
+		}
 	}
 }
 
