@@ -198,10 +198,13 @@ public class Velocity_plugin {
 			connect = false;
 		}
 		if (message2.contains("litestrike")) {
-				QueSystem.ls_que.add_player(backend_conn.getPlayer(), connect);
+			que_system.remove_player_from_que(backend_conn.getPlayer());
+			QueSystem.ls_que.add_player(backend_conn.getPlayer(), connect);
 		} else if (message2.contains("knockoff")) {
+			que_system.remove_player_from_que(backend_conn.getPlayer());
 			QueSystem.ko_que.add_player(backend_conn.getPlayer(), connect);
 		} else if (message2.contains("crystalblitz")) {
+			que_system.remove_player_from_que(backend_conn.getPlayer());
 			QueSystem.cb_que.add_player(backend_conn.getPlayer(), connect);
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
