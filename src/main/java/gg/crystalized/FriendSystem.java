@@ -75,7 +75,6 @@ class FriendsCommand implements SimpleCommand{
 
     @Override
     public void execute(Invocation invocation) {
-        //TODO make it so the player can't friend themself
         String[] args = invocation.arguments();
         Player executer = (Player) invocation.source();
         if (args.length == 0) {
@@ -152,11 +151,16 @@ class FriendsCommand implements SimpleCommand{
             }
 
             if(requested == null){
-                executer.sendMessage(text("There are no online players called " + args[1]).color(RED));
+                executer.sendMessage(text("There are no players called " + args[1] + " online").color(RED));
                 return;
             }
             if(Databases.areFriends(executer, requested)){
                 executer.sendMessage(text("You are already friends with " + args[1]).color(RED));
+                return;
+            }
+
+            if(!Settings.isAllowed("friends_requests", requested, executer)){
+                executer.sendMessage(text("You cannot friend request " + requested.getUsername()).color(RED));
                 return;
             }
 

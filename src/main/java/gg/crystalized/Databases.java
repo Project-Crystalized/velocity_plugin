@@ -205,4 +205,37 @@ public class Databases {
             return false;
         }
     }
+
+    public static HashMap<String, Object> fetchSettings(Player p){
+        try(Connection conn = DriverManager.getConnection(LOBBY)) {
+            PreparedStatement prep = conn.prepareStatement("SELECT * FROM Settings WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(p));
+            ResultSet set = prep.executeQuery();
+            set.next();
+            ResultSetMetaData data = set.getMetaData();
+            int count = data.getColumnCount();
+            HashMap<String, Object> map = new HashMap<>();
+            for(int i = 1; i <= count; i++){
+                map.put(data.getColumnLabel(i), set.getObject(data.getColumnLabel(i)));
+            }
+            return map;
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get settings data for " + p.getUsername() + "UUID: " + p.getUniqueId());
+            return null;
+        }
+    }
+
+    public static void updateSetting(Player p, String dbSettingName, double value){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            String makeNewEntry = "UPDATE Settings SET "+ dbSettingName + " = ? WHERE player_uuid = ?";
+            PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
+            prepared.setDouble(1, value);
+            prepared.setBytes(2, uuid_to_bytes(p));
+            prepared.executeUpdate();
+        }catch(SQLException e) {
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
+        }
+    }
 }

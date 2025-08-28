@@ -25,13 +25,16 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.event.ClickEvent.Action.RUN_COMMAND;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -42,9 +45,10 @@ public class Velocity_plugin {
 
 	public final ProxyServer server;
 	public static Logger logger;
-	public Litestrike_Selector ls_selector;
-	public Knockoff_Selector ko_selector;
-	public CrystalBlitz_Selector cb_selector;
+	public static Litestrike_Selector ls_selector;
+	public static  Knockoff_Selector ko_selector;
+	public static CrystalBlitz_Selector cb_selector;
+	//whenever we make a new game selector we need to edit the requeue command as well
 	public QueSystem que_system;
 	public BanCommand ban_command;
 	public PartySystem party_system;
@@ -324,9 +328,15 @@ class MsgCommand implements SimpleCommand {
 		}
 		Player p = server.getPlayer(invocation.arguments()[0]).orElse(null);
 		if (p == null) {
-			invocation.source().sendMessage(text("Couldn't find that player"));
+			invocation.source().sendMessage(text("Couldn't find that player").color(RED));
 			return;
 		}
+
+		if(!Settings.isAllowed("dms", p, (Player)invocation.source())){
+			invocation.source().sendMessage(text("You cannot send messages to " + p.getUsername()).color(RED));
+			return;
+		}
+
 		Component message = text("");
 		for (String arg : invocation.arguments()) {
 			if (arg == invocation.arguments()[0])
@@ -384,4 +394,32 @@ class BroadCastCommand implements RawCommand {
 
 interface ServerSelector {
 	public void send_player(Player p);
+}
+
+class Settings{
+	public static Double toDouble(Object o){
+		if(o instanceof Double){
+			return (Double)o;
+		}
+		if(!(o instanceof Integer)){
+			return null;
+		}
+		return Double.valueOf((Integer) o);
+	}
+
+	public static boolean isAllowed(String database, Player p, Player invocer){
+		if(Databases.fetchSettings(p).get(database) == null){
+			return false;
+		}
+
+		if(toDouble(Databases.fetchSettings(p).get(database)) == 0){
+			return false;
+		}
+
+		if(toDouble(Databases.fetchSettings(p).get(database)) == 0.5 && !Databases.areFriends(p, invocer)){
+			return false;
+		}
+
+		return true;
+	}
 }

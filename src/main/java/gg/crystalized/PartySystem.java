@@ -221,6 +221,10 @@ class PartyCommand implements SimpleCommand {
 			invocation.source().sendMessage(party.render());
 
 		} else if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")) {
+			if(Settings.isAllowed("party_requests", mentioned_player, executer)){
+				executer.sendMessage(text("You cannot party invite " + mentioned_player.getUsername()).color(RED));
+				return;
+			}
 			if (party == null) {
 				invocation.source().sendMessage(text("Creating a new party").color(DARK_PURPLE));
 				party = new Party(executer);
@@ -263,7 +267,7 @@ class PartyCommand implements SimpleCommand {
 
 		} else if (args[0].equals("kick") || args[0].equals("remove")) {
 			if (mentioned_player == executer) {
-				invocation.source().sendMessage(text("You cant kick yourself").color(RED));
+				invocation.source().sendMessage(text("You can't kick yourself").color(RED));
 				return;
 			}
 			if (!party.members.contains(mentioned_player)) {
