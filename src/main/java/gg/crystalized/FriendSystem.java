@@ -1,5 +1,7 @@
 package gg.crystalized;
 
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
@@ -188,6 +190,10 @@ class FriendsCommand implements SimpleCommand{
                 Databases.addFriend(executer, requester);
                 requester.sendMessage(text(executer.getUsername() + " has accepted your friend request").color(YELLOW));
                 executer.sendMessage(text("Accepted friend request from " + requester.getUsername()).color(YELLOW));
+                ByteArrayDataOutput out = ByteStreams.newDataOutput();
+                out.writeUTF("Settings");
+                out.writeUTF("player_visibility");
+                executer.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
             }
 
             if(args[0].equals("deny")) {
