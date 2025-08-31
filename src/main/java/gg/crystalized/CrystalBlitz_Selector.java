@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 public class CrystalBlitz_Selector implements ServerSelector {
 
@@ -143,6 +144,28 @@ public class CrystalBlitz_Selector implements ServerSelector {
             return Component.text("Server status: Registered servers: " + registerd + " | Online servers: " + online
                     + " | Ongoing games: " + games_going).color(NamedTextColor.WHITE);
         }
+    }
+
+    @Override
+    public void execute(Invocation invocation) {
+        if(!(invocation.source() instanceof Player)){
+            return;
+        }
+        Player source = (Player)invocation.source();
+        boolean correct = false;
+        for(CrystalBlitzServer s : cb_servers){
+            if(s.contains_player(source)){
+                correct = true;
+                break;
+            }
+        }
+
+        if(!correct){
+            return;
+        }
+
+        Velocity_plugin.que_system.remove_player_from_que(source);
+        QueSystem.cb_que.add_player(source, true);
     }
 
 }

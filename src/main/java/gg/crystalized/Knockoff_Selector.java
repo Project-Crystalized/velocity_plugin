@@ -20,6 +20,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 public class Knockoff_Selector implements ServerSelector {
 
@@ -149,7 +150,27 @@ public class Knockoff_Selector implements ServerSelector {
 					+ " | Ongoing games: " + games_going).color(NamedTextColor.WHITE);
 		}
 	}
+	@Override
+	public void execute(Invocation invocation) {
+		if(!(invocation.source() instanceof Player)){
+			return;
+		}
+		Player source = (Player)invocation.source();
+		boolean correct = false;
+		for(KnockoffServer s : ko_servers){
+			if(s.contains_player(source)){
+				correct = true;
+				break;
+			}
+		}
 
+		if(!correct){
+			return;
+		}
+
+		Velocity_plugin.que_system.remove_player_from_que(source);
+		QueSystem.ko_que.add_player(source, true);
+	}
 }
 
 class KnockoffServer {

@@ -49,7 +49,7 @@ public class Velocity_plugin {
 	public static  Knockoff_Selector ko_selector;
 	public static CrystalBlitz_Selector cb_selector;
 	//whenever we make a new game selector we need to edit the requeue command as well
-	public QueSystem que_system;
+	public static QueSystem que_system;
 	public BanCommand ban_command;
 	public PartySystem party_system;
 	public FriendSystem friend_system;
@@ -130,6 +130,11 @@ public class Velocity_plugin {
 
 		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
 		commandManager.register(commandMetaMsg, new MsgCommand(server));
+
+		CommandMeta commandMetaRequeue = commandManager.metaBuilder("requeue").plugin(this).build();
+		commandManager.register(commandMetaRequeue, new Litestrike_Selector(server, this));
+		commandManager.register(commandMetaRequeue, new Knockoff_Selector(server, this));
+		commandManager.register(commandMetaRequeue, new CrystalBlitz_Selector(server, this));
 	}
 
 	@Subscribe
@@ -175,6 +180,7 @@ public class Velocity_plugin {
 				String command = "party remove " + message3;
 				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
 			}
+			return;
 		}
 
 		if(message1.contains("Friend")){
@@ -188,6 +194,24 @@ public class Velocity_plugin {
 				String command = "friend request " + message3;
 				server.getCommandManager().executeAsync(backend_conn.getPlayer(), command);
 			}
+			return;
+		}
+
+		if(message1.contains("Online")){
+			String message2 = in.readUTF();
+			if(message2.equals("a")){
+				//TODO
+			}
+			int i = 0;
+			if(server.getPlayer(message2).isPresent()){
+				i = 1;
+			}
+			ByteArrayDataOutput out = ByteStreams.newDataOutput();
+			out.writeUTF("Online");
+			out.writeUTF(message2);
+			out.writeInt(i);
+			backend_conn.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+			return;
 		}
 
 		if (!(message1.contains("Connect"))) {
@@ -392,7 +416,7 @@ class BroadCastCommand implements RawCommand {
 	}
 }
 
-interface ServerSelector {
+interface ServerSelector extends SimpleCommand{
 	public void send_player(Player p);
 }
 
@@ -408,18 +432,28 @@ class Settings{
 	}
 
 	public static boolean isAllowed(String database, Player p, Player invocer){
+		boolean player;
 		if(Databases.fetchSettings(p).get(database) == null){
-			return false;
+			player = false;
+		}else if(toDouble(Databases.fetchSettings(p).get(database)) == 0){
+			player = false;
+		}else if(toDouble(Databases.fetchSettings(p).get(database)) == 0.5 && !Databases.areFriends(p, invocer)){
+			player =  false;
+		}else {
+			player = true;
 		}
 
-		if(toDouble(Databases.fetchSettings(p).get(database)) == 0){
-			return false;
+		boolean invoc;
+		if(Databases.fetchSettings(invocer).get(database) == null){
+			invoc = false;
+		}else if(toDouble(Databases.fetchSettings(invocer).get(database)) == 0){
+			invoc = false;
+		}else if(toDouble(Databases.fetchSettings(invocer).get(database)) == 0.5 && !Databases.areFriends(p, invocer)){
+			invoc =  false;
+		}else {
+			invoc = true;
 		}
 
-		if(toDouble(Databases.fetchSettings(p).get(database)) == 0.5 && !Databases.areFriends(p, invocer)){
-			return false;
-		}
-
-		return true;
+		return player && invoc;
 	}
 }
