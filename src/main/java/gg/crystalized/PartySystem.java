@@ -221,7 +221,7 @@ class PartyCommand implements SimpleCommand {
 			invocation.source().sendMessage(party.render());
 
 		} else if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")) {
-			if(Settings.isAllowed("party_requests", mentioned_player, executer)){
+			if(Settings.isReceiveAllowed("party_requests", mentioned_player, executer)){
 				executer.sendMessage(text("You cannot party invite " + mentioned_player.getUsername()).color(RED));
 				return;
 			}

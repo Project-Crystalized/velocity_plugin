@@ -161,7 +161,7 @@ class FriendsCommand implements SimpleCommand{
                 return;
             }
 
-            if(!Settings.isAllowed("friends_requests", requested, executer)){
+            if(!Settings.isReceiveAllowed("friends_requests", requested, executer)){
                 executer.sendMessage(text("You cannot friend request " + requested.getUsername()).color(RED));
                 return;
             }

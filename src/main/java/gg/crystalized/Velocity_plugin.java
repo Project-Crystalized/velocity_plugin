@@ -85,6 +85,7 @@ public class Velocity_plugin {
 	public void onDisconnect(DisconnectEvent e) {
 		que_system.remove_player_from_que(e.getPlayer());
 		party_system.remove_player(e.getPlayer());
+		Friend.allFriends.remove(Friend.getFriendObject(e.getPlayer()));
 		Databases.setOnline(e.getPlayer(), false);
 	}
 
@@ -201,6 +202,7 @@ public class Velocity_plugin {
 			String message2 = in.readUTF();
 			if(message2.equals("a")){
 				//TODO
+				return;
 			}
 			int i = 0;
 			if(server.getPlayer(message2).isPresent()){
@@ -455,5 +457,19 @@ class Settings{
 		}
 
 		return player && invoc;
+	}
+
+	public static boolean isReceiveAllowed(String database, Player p, Player invocer){
+		if(Databases.fetchSettings(p).get(database) == null){
+			return false;
+		}
+		if(toDouble(Databases.fetchSettings(p).get(database)) == 0){
+			return false;
+		}
+
+		if(toDouble(Databases.fetchSettings(p).get(database)) == 0.5 && !Databases.areFriends(p, invocer)){
+			return false;
+		}
+		return true;
 	}
 }
