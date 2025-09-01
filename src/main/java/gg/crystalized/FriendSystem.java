@@ -10,6 +10,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import org.geysermc.floodgate.api.FloodgateApi;
 
 import java.util.*;
 
@@ -168,8 +169,16 @@ class FriendsCommand implements SimpleCommand{
 
             executer.sendMessage(text("Sent " + args[1] + " a friend request!").color(YELLOW));
             Friend.getFriendObject(requested).currentlyRequesting.add(executer);
-            Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
-            Component deny = translatable("crystalized.generic.deny").color(RED).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
+
+            Component accept;
+            Component deny;
+            if(!FloodgateApi.getInstance().isFloodgatePlayer(requested.getUniqueId())) {
+                accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
+                deny = translatable("crystalized.generic.deny").color(RED).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
+            }else{
+                accept = text("You can do /accept to accept").color(GREEN);
+                deny = text("or /deny to deny").color(RED);
+            }
             requested.sendMessage(text(executer.getUsername() + " send you a friend request ").color(YELLOW).append(accept).append(text(" ")).append(deny));
         }
 
