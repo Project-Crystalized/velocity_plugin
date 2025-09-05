@@ -265,7 +265,8 @@ public class Velocity_plugin {
 				|| p.getUsername().equals("Callum_Is_Bad")
 				|| p.getUsername().equals(".CallumIsBad6502")
 				|| p.getUsername().equals("LadyCat_")
-				|| p.getUsername().equals("___mira___")) {
+				|| p.getUsername().equals("___mira___")
+				|| p.getUsername().equals("Delieve")) {
 			return true;
 		} else {
 			return false;
