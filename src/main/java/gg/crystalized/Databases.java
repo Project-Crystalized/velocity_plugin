@@ -63,14 +63,13 @@ public class Databases {
             int count = data.getColumnCount();
             ArrayList<Object[]> list = new ArrayList<>();
             while(set.next()) {
-                while(set.next()) {
-                    Object[] o = new Object[3];
-                    for (int i = 1; i <= count; i++) {
-                        o[i-1] = set.getObject(data.getColumnLabel(i));
-                    }
-                    list.add(o);
+                Object[] o = new Object[3];
+                for (int i = 1; i <= count; i++) {
+                    o[i-1] = set.getObject(data.getColumnLabel(i));
                 }
+                list.add(o);
             }
+
             return list;
         }catch(SQLException e){
             Velocity_plugin.logger.info(e.getMessage());
