@@ -49,7 +49,9 @@ public class Velocity_plugin {
 	public static  Knockoff_Selector ko_selector;
 	public static CrystalBlitz_Selector cb_selector;
 	//whenever we make a new game selector we need to edit the requeue command as well
+
 	public static QueSystem que_system;
+    public static QueueSystem queueSystem; //new version
 	public BanCommand ban_command;
 	public PartySystem party_system;
 	public FriendSystem friend_system;
@@ -136,6 +138,9 @@ public class Velocity_plugin {
 		commandManager.register(commandMetaRequeue, new Litestrike_Selector(server, this));
 		commandManager.register(commandMetaRequeue, new Knockoff_Selector(server, this));
 		commandManager.register(commandMetaRequeue, new CrystalBlitz_Selector(server, this));
+
+        queueSystem = new QueueSystem(server, this); //new version
+        server.getEventManager().register(this, queueSystem);
 	}
 
 	@Subscribe
