@@ -105,7 +105,8 @@ public class QueSystem {
 	}
 }
 
-class UnqueCommand implements SimpleCommand {
+//Deprecated in favour of this being implemented in QueueSystem.java
+/*class UnqueCommand implements SimpleCommand {
 	private Velocity_plugin plugin;
 
 	public UnqueCommand(Velocity_plugin plugin) {
@@ -130,7 +131,7 @@ class UnqueCommand implements SimpleCommand {
 	public boolean hasPermission(Invocation invocation) {
 		return true;
 	}
-}
+}*/
 
 class GameQue {
 	private QueSystem qs;

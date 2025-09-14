@@ -115,8 +115,8 @@ public class Velocity_plugin {
 		CommandMeta commandMetahub = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
 		commandManager.register(commandMetahub, new HubCommand(server.getServer("lobby").get()));
 
-		CommandMeta commandMetaUnque = commandManager.metaBuilder("unque").aliases("unqueue").plugin(this).build();
-		commandManager.register(commandMetaUnque, new UnqueCommand(this));
+		//CommandMeta commandMetaUnque = commandManager.metaBuilder("unque").aliases("unqueue").plugin(this).build();
+		//commandManager.register(commandMetaUnque, new UnqueCommand(this));
 
 		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
 		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector, que_system));
@@ -232,15 +232,19 @@ public class Velocity_plugin {
 		if(message3 != null && message3.contains("false")){
 			connect = false;
 		}
+        QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 		if (message2.contains("litestrike")) {
-			que_system.remove_player_from_que(backend_conn.getPlayer());
-			QueSystem.ls_que.add_player(backend_conn.getPlayer(), connect);
+			//que_system.remove_player_from_que(backend_conn.getPlayer());
+			//QueSystem.ls_que.add_player(backend_conn.getPlayer(), connect);
+            QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("knockoff")) {
-			que_system.remove_player_from_que(backend_conn.getPlayer());
-			QueSystem.ko_que.add_player(backend_conn.getPlayer(), connect);
+			//que_system.remove_player_from_que(backend_conn.getPlayer());
+			//QueSystem.ko_que.add_player(backend_conn.getPlayer(), connect);
+            QueueSystem.getQueue(QueueSystem.queueTypes.knockoff).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("crystalblitz")) {
-			que_system.remove_player_from_que(backend_conn.getPlayer());
-			QueSystem.cb_que.add_player(backend_conn.getPlayer(), connect);
+			//que_system.remove_player_from_que(backend_conn.getPlayer());
+			//QueSystem.cb_que.add_player(backend_conn.getPlayer(), connect);
+            QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
