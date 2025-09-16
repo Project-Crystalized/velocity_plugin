@@ -146,10 +146,10 @@ class GameQueue{
             }
 
             //Queue timer
-            if (players.size() == needed && !queueTimerStarted) {
+            if ((players.size() == needed || players.size() > needed) && !queueTimerStarted) {
                 queueTimerStarted = true;
                 timer.set(new AtomicInteger(7));
-            } else if (players.size() != needed && queueTimerStarted) {
+            } else if ((players.size() != needed || !(players.size() > needed)) && queueTimerStarted) {
                 queueTimerStarted = false;
                 for (Player p : players) {
                     p.sendMessage(text("Game cancelled, not enough players!"));
