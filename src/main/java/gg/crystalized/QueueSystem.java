@@ -139,7 +139,7 @@ class GameQueue{
         }
         Velocity_plugin.logger.info("[QueueSystem] Registered \"" + type + "\" queue with " + servers.size() + " server(s).");
 
-        AtomicReference<AtomicInteger> timer = new AtomicReference<>(new AtomicInteger(7)); //werid shit
+        AtomicReference<AtomicInteger> timer = new AtomicReference<>(new AtomicInteger(15)); //werid shit
         proxyServer.getScheduler().buildTask(plugin, () -> {
             for (GameServer s : servers) {
                 s.updateServerStatus();
@@ -148,7 +148,7 @@ class GameQueue{
             //Queue timer
             if ((players.size() == needed || players.size() > needed) && !queueTimerStarted) {
                 queueTimerStarted = true;
-                timer.set(new AtomicInteger(7));
+                timer.set(new AtomicInteger(15));
             } else if ((players.size() < needed) && queueTimerStarted) {
                 queueTimerStarted = false;
                 for (Player p : players) {
@@ -172,10 +172,10 @@ class GameQueue{
                 }
                 if (timer.get().get() == 0) {
                     sendAllPlayersToServer();
-                    timer.set(new AtomicInteger(7));
+                    timer.set(new AtomicInteger(15));
                 }
             } else {
-                timer.set(new AtomicInteger(7));
+                timer.set(new AtomicInteger(15));
                 for (Player p : players) {
                     List<Component> translatableList = new ArrayList<>();
                     translatableList.add(name);
