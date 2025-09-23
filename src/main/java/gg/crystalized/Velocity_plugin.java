@@ -45,23 +45,13 @@ public class Velocity_plugin {
 
 	public final ProxyServer server;
 	public static Logger logger;
-	public static Litestrike_Selector ls_selector;
-	public static  Knockoff_Selector ko_selector;
-	public static CrystalBlitz_Selector cb_selector;
-	//whenever we make a new game selector we need to edit the requeue command as well
 
-	public static QueSystem que_system;
-    public static QueueSystem queueSystem; //new version
+    public static QueueSystem queueSystem;
 	public BanCommand ban_command;
 	public PartySystem party_system;
 	public FriendSystem friend_system;
 
-	public static boolean event_started = true;
-
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
-	public static final MinecraftChannelIdentifier LS_CHANNEL = MinecraftChannelIdentifier.from("crystalized:litestrike");
-	public static final MinecraftChannelIdentifier KO_CHANNEL = MinecraftChannelIdentifier.from("crystalized:knockoff");
-	public static final MinecraftChannelIdentifier CB_CHANNEL = MinecraftChannelIdentifier.from("crystalized:crystalblitz");
 	public static final MinecraftChannelIdentifier CRYSTALIZED_ESSENTIALS = MinecraftChannelIdentifier.from("crystalized:essentials");
 
 	@Inject
@@ -85,7 +75,6 @@ public class Velocity_plugin {
 
 	@Subscribe
 	public void onDisconnect(DisconnectEvent e) {
-		que_system.remove_player_from_que(e.getPlayer());
 		party_system.remove_player(e.getPlayer());
 		Friend.allFriends.remove(Friend.getFriendObject(e.getPlayer()));
 		Databases.setOnline(e.getPlayer(), false);
@@ -94,20 +83,9 @@ public class Velocity_plugin {
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent event) {
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
-		server.getChannelRegistrar().register(LS_CHANNEL);
-		server.getChannelRegistrar().register(KO_CHANNEL);
-		server.getChannelRegistrar().register(CB_CHANNEL);
 		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
 
-		this.ls_selector = new Litestrike_Selector(server, this);
-		this.ko_selector = new Knockoff_Selector(server, this);
-		this.cb_selector = new CrystalBlitz_Selector(server, this);
-		server.getEventManager().register(this, ls_selector);
-		server.getEventManager().register(this, ko_selector);
-		server.getEventManager().register(this, cb_selector);
-
 		this.party_system = new PartySystem(server, this);
-		this.que_system = new QueSystem(server, this);
 		this.friend_system = new FriendSystem(server, this);
 
 		CommandManager commandManager = server.getCommandManager();
@@ -115,29 +93,15 @@ public class Velocity_plugin {
 		CommandMeta commandMetahub = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
 		commandManager.register(commandMetahub, new HubCommand(server.getServer("lobby").get()));
 
-		//CommandMeta commandMetaUnque = commandManager.metaBuilder("unque").aliases("unqueue").plugin(this).build();
-		//commandManager.register(commandMetaUnque, new UnqueCommand(this));
-
-		CommandMeta commandMetarejoin = commandManager.metaBuilder("rejoin").plugin(this).build();
-		commandManager.register(commandMetarejoin, new RejoinCommand(ls_selector, que_system));
-
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
 		ban_command = new BanCommand(server);
 		commandManager.register(commandMetaban, ban_command);
-
-		CommandMeta commandMetaEvent = commandManager.metaBuilder("start_event").plugin(this).build();
-		commandManager.register(commandMetaEvent, new StartEventCommand());
 
 		CommandMeta commandMetaBroadcast = commandManager.metaBuilder("broadcast").plugin(this).build();
 		commandManager.register(commandMetaBroadcast, new BroadCastCommand(server));
 
 		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
 		commandManager.register(commandMetaMsg, new MsgCommand(server));
-
-		CommandMeta commandMetaRequeue = commandManager.metaBuilder("requeue").plugin(this).build();
-		commandManager.register(commandMetaRequeue, new Litestrike_Selector(server, this));
-		commandManager.register(commandMetaRequeue, new Knockoff_Selector(server, this));
-		commandManager.register(commandMetaRequeue, new CrystalBlitz_Selector(server, this));
 
         queueSystem = new QueueSystem(server, this); //new version
         server.getEventManager().register(this, queueSystem);
@@ -146,7 +110,13 @@ public class Velocity_plugin {
 	@Subscribe
 	public void onPreConnect(PreLoginEvent e) {
 		if (ban_command.isBanned(e.getUniqueId())) {
-			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(text("you are banned"))); //TODO make this message look nice or smth
+            //TODO make this better with colour/visuals and replace placeholders with text.
+			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(
+                    text("You've been banned by ")
+                            .append(text("[Name here]")).append(text(" for the reason: \n\""))
+                            .append(text("[Reason here]")).append(text("\".\n"))
+                            .append(text("You will be unbanned in: ")).append(text("[time here]"))
+            ));
 		}
 	}
 
@@ -234,22 +204,16 @@ public class Velocity_plugin {
 		}
         QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 		if (message2.contains("litestrike")) {
-			//que_system.remove_player_from_que(backend_conn.getPlayer());
-			//QueSystem.ls_que.add_player(backend_conn.getPlayer(), connect);
             QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("knockoff")) {
-			//que_system.remove_player_from_que(backend_conn.getPlayer());
-			//QueSystem.ko_que.add_player(backend_conn.getPlayer(), connect);
             QueueSystem.getQueue(QueueSystem.queueTypes.knockoff).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("crystalblitz")) {
-			//que_system.remove_player_from_que(backend_conn.getPlayer());
-			//QueSystem.cb_que.add_player(backend_conn.getPlayer(), connect);
             QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
 			if(connect){
-				que_system.remove_player_from_que(backend_conn.getPlayer());
+				QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			}
 		}
 	}
@@ -283,23 +247,6 @@ public class Velocity_plugin {
 	}
 }
 
-class StartEventCommand implements SimpleCommand {
-
-	@Override
-	public void execute(Invocation invocation) {
-		Velocity_plugin.event_started = !Velocity_plugin.event_started;
-	}
-
-	@Override
-	public boolean hasPermission(Invocation invocation) {
-		if (invocation.source() instanceof ConsoleCommandSource) {
-			return true;
-		}
-		Player p = (Player) invocation.source();
-		return Velocity_plugin.is_admin(p);
-	}
-}
-
 class HubCommand implements SimpleCommand {
 	private RegisteredServer lobby;
 
@@ -310,34 +257,6 @@ class HubCommand implements SimpleCommand {
 	@Override
 	public void execute(Invocation invocation) {
 		((Player) invocation.source()).createConnectionRequest(lobby).connect();
-	}
-
-	@Override
-	public boolean hasPermission(Invocation invocation) {
-		return true;
-	}
-}
-
-class RejoinCommand implements SimpleCommand {
-	private Litestrike_Selector ls_selector;
-	private QueSystem qs;
-
-	public RejoinCommand(Litestrike_Selector ls_selector, QueSystem qs) {
-		this.qs = qs;
-		this.ls_selector = ls_selector;
-	}
-
-	@Override
-	public void execute(Invocation invocation) {
-		Player p = (Player) invocation.source();
-		RegisteredServer rs = ls_selector.get_server_of(p);
-		if (rs == null) {
-			p.sendMessage(text("looks like your not part of any game"));
-		} else {
-			qs.remove_player_from_que(p);
-			p.sendMessage(text("Connecting you to previous game"));
-			p.createConnectionRequest(rs).connect();
-		}
 	}
 
 	@Override
@@ -426,10 +345,6 @@ class BroadCastCommand implements RawCommand {
 		Player p = (Player) invocation.source();
 		return Velocity_plugin.is_admin(p);
 	}
-}
-
-interface ServerSelector extends SimpleCommand{
-	public void send_player(Player p);
 }
 
 class Settings{
