@@ -24,17 +24,13 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import static net.kyori.adventure.text.Component.text;
-import static net.kyori.adventure.text.event.ClickEvent.Action.RUN_COMMAND;
 import static net.kyori.adventure.text.format.NamedTextColor.RED;
 import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -102,6 +98,9 @@ public class Velocity_plugin {
 
 		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
 		commandManager.register(commandMetaMsg, new MsgCommand(server));
+
+		CommandMeta commandMetaSetRanked = commandManager.metaBuilder("ls_set_ranked").plugin(this).build();
+		commandManager.register(commandMetaSetRanked, new SetRankedCommand(server));
 
         queueSystem = new QueueSystem(server, this); //new version
         server.getEventManager().register(this, queueSystem);
@@ -202,7 +201,7 @@ public class Velocity_plugin {
 		if(message3 != null && message3.contains("false")){
 			connect = false;
 		}
-        QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
+    QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 		if (message2.contains("litestrike")) {
             QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("knockoff")) {
