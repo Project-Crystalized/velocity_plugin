@@ -258,13 +258,13 @@ class PartyCommand implements SimpleCommand {
 			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + mentioned_player.getUsername() + "\" has joined your Party").color(TextColor.fromHexString("#f299da")));
 			executer.sendMessage(text("You have joined the party of " + args[1]).color(TextColor.fromHexString("#f299da")));
 			party_to_join.members.add(executer);
-			plugin.que_system.remove_player_from_que(executer);
-			if (QueSystem.ls_que.contains(party_to_join.members.get(0))) {
-				QueSystem.ls_que.add_player(executer, true);
-			} else if (QueSystem.ko_que.contains(party_to_join.members.get(0))) {
-				QueSystem.ko_que.add_player(executer, true);
-			}
-
+			//plugin.que_system.remove_player_from_que(executer);
+            QueueSystem.removeFromAllQueues(executer);
+            for (GameQueue gq : QueueSystem.queues) {
+                if (gq.players.contains(party_to_join.members.getFirst())) {
+                    gq.addPlayerToQueue(executer);
+                }
+            }
 		} else if (args[0].equals("kick") || args[0].equals("remove")) {
 			if (mentioned_player == executer) {
 				invocation.source().sendMessage(text("You can't kick yourself").color(RED));
@@ -278,18 +278,18 @@ class PartyCommand implements SimpleCommand {
 					.sendMessage(text("Kicking Player \"" + args[1] + "\" from your party").color(TextColor.fromHexString("#f299da")));
 			party.invited.remove(args[1]);
 			ps.remove_player(mentioned_player);
-			plugin.que_system.remove_player_from_que(mentioned_player);
+            QueueSystem.removeFromAllQueues(mentioned_player);
 
 		} else if (args[0].equals("disband")) {
 			Audience.audience(party.members).sendMessage(text("Your party has been disbanded").color(TextColor.fromHexString("#f299da")));
 			ps.partys.remove(party);
 			for (Player p : party.members) {
-				plugin.que_system.remove_player_from_que(p);
+                QueueSystem.removeFromAllQueues(executer);
 			}
 
 		} else if (args[0].equals("leave")) {
 			ps.remove_player(executer);
-			plugin.que_system.remove_player_from_que(executer);
+            QueueSystem.removeFromAllQueues(executer);
 
 		} else if (args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
 			int promoted_index = party.members.indexOf(mentioned_player);
@@ -300,7 +300,7 @@ class PartyCommand implements SimpleCommand {
 
 		// we are here if the command succeded, so we now update the party
 		if (party != null) {
-			plugin.ls_selector.send_party_update(party);
+			//plugin.ls_selector.send_party_update(party);
 		}
 
 	}
