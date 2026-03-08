@@ -206,7 +206,11 @@ public class Velocity_plugin {
 		if(message1.contains("Online")){
 			String message2 = in.readUTF();
 			if(message2.equals("a")){
-				//TODO
+				ByteArrayDataOutput out = ByteStreams.newDataOutput();
+				out.writeUTF("Online");
+				out.writeUTF(message2);
+				out.writeInt(server.getAllPlayers().size());
+				backend_conn.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
 				return;
 			}
 			int i = 0;
