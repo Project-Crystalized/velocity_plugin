@@ -200,11 +200,13 @@ public class Velocity_plugin {
 
 		String message2 = in.readUTF();
 
-		String message3 = in.readUTF();
+		String message3 = null;
+		try{message3 = in.readUTF();}catch(IllegalStateException e){}
 		boolean connect = true;
-		if(message3 != null && message3.contains("false")){
+		if (message3 != null && message3.contains("false")) {
 			connect = false;
 		}
+
     QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 		if (message2.contains("litestrike")) {
             QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());
