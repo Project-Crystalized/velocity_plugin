@@ -1,7 +1,6 @@
 package gg.crystalized;
 
 import com.velocitypowered.api.proxy.Player;
-import net.kyori.adventure.text.Component;
 
 
 import java.nio.ByteBuffer;
@@ -13,9 +12,20 @@ import java.util.UUID;
 
 public class Databases {
     public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql";
+    private static Connection conn = null;
+
+    public static void setConn(){
+        try{
+            Class.forName("org.sqlite.JDBC");
+            conn = DriverManager.getConnection(LOBBY);
+        }catch(SQLException | ClassNotFoundException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("failed to make connection");
+        }
+    }
 
     public static HashMap<String, Object> fetchPlayerData(Player p){
-        try(Connection conn = DriverManager.getConnection(LOBBY)) {
+        try {
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             ResultSet set = prep.executeQuery();
@@ -35,7 +45,7 @@ public class Databases {
     }
 
     public static HashMap<String, Object> fetchPlayerData(byte[] p) {
-        try (Connection conn = DriverManager.getConnection(LOBBY)) {
+        try {
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
             prep.setBytes(1, p);
             ResultSet set = prep.executeQuery();
@@ -55,7 +65,7 @@ public class Databases {
     }
 
     public static ArrayList<Object[]> fetchFriends(Player p){
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
+        try{
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM Friends WHERE player_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             ResultSet set = prep.executeQuery();
@@ -80,7 +90,6 @@ public class Databases {
 
     public static void addFriend(Player p, Player friend){
         try{
-            Connection conn = DriverManager.getConnection(LOBBY);
             PreparedStatement prep = conn.prepareStatement("INSERT INTO Friends(player_uuid, friend_uuid, date) VALUES(?, ?, ?);");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, uuid_to_bytes(friend));
@@ -99,7 +108,7 @@ public class Databases {
     }
 
     public static void removeFriend(Player p, byte[] friend){
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
+        try{
             PreparedStatement prep = conn.prepareStatement("DELETE FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, friend);
@@ -114,7 +123,7 @@ public class Databases {
     }
 
     public static void updatePlayerNames(Player p){
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
+        try{
             String makeNewEntry = "UPDATE LobbyPlayers SET player_name = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
             prepared.setString(1, p.getUsername());
@@ -140,7 +149,7 @@ public class Databases {
     }
      */
     public static void setOnline(Player p, boolean online){
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
+        try{
             String makeNewEntry = "UPDATE LobbyPlayers SET online = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
             int on = 0;
@@ -174,7 +183,7 @@ public class Databases {
     }
 
     public static boolean areFriends(Player p, Player friend){
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
+        try{
             PreparedStatement prep = conn.prepareStatement("SELECT COUNT(*) AS count FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, uuid_to_bytes(friend));
@@ -190,7 +199,7 @@ public class Databases {
     }
 
     public static boolean areFriends(Player p, byte[] friend){
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
+        try{
             PreparedStatement prep = conn.prepareStatement("SELECT COUNT(*) AS count FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, friend);
@@ -206,7 +215,7 @@ public class Databases {
     }
 
     public static HashMap<String, Object> fetchSettings(Player p){
-        try(Connection conn = DriverManager.getConnection(LOBBY)) {
+        try{
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM Settings WHERE player_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             ResultSet set = prep.executeQuery();
@@ -226,7 +235,7 @@ public class Databases {
     }
 
     public static void updateSetting(Player p, String dbSettingName, double value){
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
+        try{
             String makeNewEntry = "UPDATE Settings SET "+ dbSettingName + " = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
             prepared.setDouble(1, value);

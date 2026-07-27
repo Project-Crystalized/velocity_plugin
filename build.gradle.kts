@@ -18,7 +18,8 @@ repositories {
 }
 
 dependencies {
-		implementation("org.xerial:sqlite-jdbc:3.47.0.0")
+    implementation("org.xerial:sqlite-jdbc:3.53.2.1")
+
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
 

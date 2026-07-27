@@ -78,6 +78,7 @@ public class Velocity_plugin {
 
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent event) {
+		Databases.setConn();
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
 		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
 
