@@ -107,7 +107,7 @@ public class BanCommand implements SimpleCommand {
 				}
 			}
 			invocation.source().sendMessage(Component.text("banning " + args[0] + " for " + duration + "seconds"));
-			player.disconnect(Component.text("you have been banned for: " + reason));
+			player.disconnect(Component.translatable("crystalized.proxy.ban").append(Component.text(reason)));
 
 			String save_ban = "INSERT INTO BanTable(banned_uuid, banned_since, banned_until, banned_by, banned_for) VALUES(?, unixepoch(), ?, ?, ?)";
 			try (Connection conn = DriverManager.getConnection(URL)) {

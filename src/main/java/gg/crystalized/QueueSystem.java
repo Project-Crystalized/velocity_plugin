@@ -152,7 +152,7 @@ class GameQueue{
             } else if ((players.size() < needed) && queueTimerStarted) {
                 queueTimerStarted = false;
                 for (Player p : players) {
-                    p.sendMessage(text("Game cancelled, not enough players!"));
+                    p.sendMessage(translatable("crystalized.generic.queue.cancelled"));
                 }
             } else if (queueTimerStarted) {
                 //timer.getAndDecrement();
@@ -168,7 +168,7 @@ class GameQueue{
                     }
                 }
                 for (Player p : players) {
-                    p.sendActionBar(text("Queuing for ").append(name).append(text(" (" + players.size() + "/" + needed + "), Teleporting in: " + timer)));
+                    p.sendActionBar(translatable("crystalized.generic.queue.for").append(name).append(text(" (" + players.size() + "/" + needed + "), ").append(translatable("crystalized.generic.queue.teleporting")).append(text(timer.toString()))));
                 }
                 if (timer.get().get() == 0) {
                     sendAllPlayersToServer();
@@ -191,24 +191,24 @@ class GameQueue{
 
     public void addPlayerToQueue(Player p) {
         if (players.size() == max) {
-            p.sendMessage(text("The ").append(name).append(text(" queue is currently full! Please try queueing again in a short bit.")));
+            p.sendMessage(translatable("crystalized.generic.queue.full", List.of(name)));
         } else {
             for (GameServer s : servers) {
                 if (s.available.equals(QueueSystem.ServerStatus.online_free)) {
                     players.add(p);
-                    p.sendMessage(text("You are queued for ").append(name));
+                    p.sendMessage(translatable("crystalized.generic.queue.queued_for").append(name));
                     return;
                 }
             }
 
-            p.sendMessage(text("No servers are currently available for ").color(NamedTextColor.RED).append(name).append(text(". Please try again later.").color(NamedTextColor.RED)));
+            p.sendMessage(translatable("crystalized.generic.queue.unavailable").color(NamedTextColor.RED).append(name).append(translatable("crystalized.generic.queue.try_again").color(NamedTextColor.RED)));
         }
     }
 
     public void removePlayerToQueue(Player p) {
         if (players.contains(p)) {
             players.remove(p);
-            p.sendMessage(text("You left the queue for ").append(name)); //TODO make translatable
+            p.sendMessage(translatable("crystalized.generic.queue.left", List.of(name)));
             p.sendActionBar(text("")); //To instantly remove the actionbar instead of minecraft fading the text away
         }
     }
@@ -230,7 +230,7 @@ class GameQueue{
         }
 
         for (Player p : playerList) {
-            p.sendMessage(text("No servers are currently available for ").color(NamedTextColor.RED).append(name).append(text(". Please try again later.").color(NamedTextColor.RED)));
+            p.sendMessage(translatable("crystalized.generic.queue.unavailable").color(NamedTextColor.RED).append(name).append(translatable("crystalized.generic.queue.try_again").color(NamedTextColor.RED)));
         }
     }
 }
@@ -317,17 +317,17 @@ class QueueCommand{
                     for (GameServer gs : gq.servers) {
                         if (gs.playersInGame.contains(p)) {
                             if (gs.type.equals(QueueSystem.queueTypes.litestrike) || gs.type.equals(QueueSystem.queueTypes.litestrike_ranked)) {
-                                p.sendMessage(text("Connecting you to your previous Litestrike game..."));
+                                p.sendMessage(translatable("crystalized.generic.queue.rejoin"));
                                 p.createConnectionRequest(gs.server).connect();
                                 return Command.SINGLE_SUCCESS;
                             } else {
-                                p.sendMessage(text("Rejoining is only supported for Litestrike and Litestrike ranked currently.").color(NamedTextColor.RED));
+                                p.sendMessage(translatable("crystalized.generic.queue.rejoin.supported").color(NamedTextColor.RED));
                                 return Command.SINGLE_SUCCESS;
                             }
                         }
                     }
                 }
-                p.sendMessage(text("You're not part of any ongoing game.").color(NamedTextColor.RED));
+                p.sendMessage(translatable("crystalized.generic.queue.rejoin.fail").color(NamedTextColor.RED));
             }
             return Command.SINGLE_SUCCESS;
         }).build();

@@ -86,7 +86,7 @@ class FriendsCommand implements SimpleCommand{
 
         if(args[0].equals("request") || args[0].equals("remove") || args[0].equals("accept") || args[0].equals("deny")){
             if(args.length < 2){
-                executer.sendMessage(text("Please specify a player").color(RED));
+                executer.sendMessage(translatable("crystalized.proxy.friends.specify").color(RED));
                 return;
             }
         }
@@ -96,7 +96,7 @@ class FriendsCommand implements SimpleCommand{
             ArrayList<String> friends = FriendSystem.getAllFriendsNames(executer);
 
             if(args.length < 2){
-                Component message = text("These are all of your friends: ").color(YELLOW);
+                Component message = translatable("crystalized.proxy.friends.all_friends").color(YELLOW);
                 for(String s : friends){
                     message = message.append(text("\n" + s));
                 }
@@ -114,10 +114,10 @@ class FriendsCommand implements SimpleCommand{
 
             if(args[1].equals("online")){
                 if(online.isEmpty()){
-                    executer.sendMessage(text("None of your friends are currently online.").color(RED));
+                    executer.sendMessage(translatable("crystalized.proxy.friends.noone_online").color(RED));
                     return;
                 }
-                Component message = text("These friends are currently online: ").color(YELLOW);
+                Component message = translatable("crystalized.proxy.friends.online_friends").color(YELLOW);
                 for(String s : online){
                     message = message.append(text("\n" + s));
                 }
@@ -127,10 +127,10 @@ class FriendsCommand implements SimpleCommand{
 
             if(args[1].equals("offline")){
                 if(friends.isEmpty()){
-                    executer.sendMessage(text("None of your friends are currently offline.").color(RED));
+                    executer.sendMessage(translatable("crystalized.proxy.friends.noone_offline").color(RED));
                     return;
                 }
-                Component message = text("These friends are currently offline: ").color(YELLOW);
+                Component message = translatable("crystalized.proxy.friends.offline_friends").color(YELLOW);
                 for(String s : friends){
                     message = message.append(text("\n" + s));
                 }
@@ -140,7 +140,7 @@ class FriendsCommand implements SimpleCommand{
         }
 
         if(Objects.equals(args[1], executer.getUsername())){
-            executer.sendMessage(text("Please input a player who's not you").color(RED));
+            executer.sendMessage(translatable("crystalized.proxy.friends.not_you").color(RED));
             return;
         }
 
@@ -154,20 +154,20 @@ class FriendsCommand implements SimpleCommand{
             }
 
             if(requested == null){
-                executer.sendMessage(text("There are no players called " + args[1] + " online").color(RED));
+                executer.sendMessage(translatable("crystalized.proxy.friends.not_found", List.of(Component.text(args[1]))).color(RED));
                 return;
             }
             if(Databases.areFriends(executer, requested)){
-                executer.sendMessage(text("You are already friends with " + args[1]).color(RED));
+                executer.sendMessage(translatable("crystalized.proxy.friends.already_friends", List.of(Component.text(args[1]))).color(RED));
                 return;
             }
 
             if(!Settings.isReceiveAllowed("friends_requests", requested, executer)){
-                executer.sendMessage(text("You cannot friend request " + requested.getUsername()).color(RED));
+                executer.sendMessage(translatable("crystalized.proxy.friends.cannot_request", List.of(Component.text(requested.getUsername()))).color(RED));
                 return;
             }
 
-            executer.sendMessage(text("Sent " + args[1] + " a friend request!").color(YELLOW));
+            executer.sendMessage(translatable("crystalized.proxy.friends.sent",List.of(Component.text(args[1]))).color(YELLOW));
             Friend.getFriendObject(requested).currentlyRequesting.add(executer);
 
             Component accept;
@@ -176,10 +176,10 @@ class FriendsCommand implements SimpleCommand{
                 accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend accept " + executer.getUsername()));
                 deny = translatable("crystalized.generic.deny").color(RED).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/friend deny " + executer.getUsername()));
             }else{
-                accept = text("You can do /accept to accept").color(GREEN);
-                deny = text("or /deny to deny").color(RED);
+                accept = translatable("crystalized.generic.do_accept").color(GREEN);
+                deny = translatable("crystalized.generic.do_deny").color(RED);
             }
-            requested.sendMessage(text(executer.getUsername() + " send you a friend request ").color(YELLOW).append(accept).append(text(" ")).append(deny));
+            requested.sendMessage(text(executer.getUsername()).append(translatable("crystalized.proxy.friends.sent_you")).color(YELLOW).append(accept).append(text(" ")).append(deny));
         }
 
         if(args[0].equals("accept") || args[0].equals("deny")){
@@ -192,13 +192,13 @@ class FriendsCommand implements SimpleCommand{
                 }
             }
             if(!exe.currentlyRequesting.contains(requester)){
-                executer.sendMessage(text("There are no pending friend requests from " + requester.getUsername()).color(RED));
+                executer.sendMessage(translatable("crystalized.proxy.friends.none_pending").append(Component.text(requester.getUsername())).color(RED));
                 return;
             }
             if(args[0].equals("accept")){
                 Databases.addFriend(executer, requester);
-                requester.sendMessage(text(executer.getUsername() + " has accepted your friend request").color(YELLOW));
-                executer.sendMessage(text("Accepted friend request from " + requester.getUsername()).color(YELLOW));
+                requester.sendMessage(text(executer.getUsername()).append(Component.translatable("crystalized.proxy.friends.accepted")).color(YELLOW));
+                executer.sendMessage(translatable("crystalized.proxy.friends.accepted_from").append(Component.text(requester.getUsername())).color(YELLOW));
                 ByteArrayDataOutput out = ByteStreams.newDataOutput();
                 out.writeUTF("Settings");
                 out.writeUTF("player_visibility");
@@ -206,7 +206,7 @@ class FriendsCommand implements SimpleCommand{
             }
 
             if(args[0].equals("deny")) {
-                executer.sendMessage(text("Denied friend request from " + requester.getUsername()).color(YELLOW));
+                executer.sendMessage(translatable("crystalized.proxy.friends.denied_from", List.of(Component.text(requester.getUsername()))).color(YELLOW));
             }
             exe.currentlyRequesting.remove(requester);
         }
@@ -220,11 +220,11 @@ class FriendsCommand implements SimpleCommand{
                 }
             }
             if(!Databases.areFriends(executer, uuid)){
-                executer.sendMessage(text(args[1] + " is not your friend").color(RED));
+                executer.sendMessage(text(args[1]).append(translatable("crystalized.proxy.friends.not_friend")).color(RED));
                 return;
             }
             Databases.removeFriend(executer, uuid);
-            executer.sendMessage(text("Removed " + args[1] + " from friends").color(YELLOW));
+            executer.sendMessage(translatable("crystalized.proxy.friends.removed", List.of(Component.text(args[1]))).color(YELLOW));
         }
 
     }

@@ -24,6 +24,7 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.translatable;
 import static net.kyori.adventure.text.format.NamedTextColor.RED;
 import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 
@@ -78,7 +79,7 @@ public class Velocity_plugin {
 
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent event) {
-		Databases.setConn();
+		Databases.setConn(server, this);
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
 		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
 
@@ -233,7 +234,7 @@ public class Velocity_plugin {
 		for(Player p : server.getAllPlayers()){
 			for(Object[] o : list){
 				if(o[1] == Databases.uuid_to_bytes(p)){
-					p.sendMessage(text(e.getPlayer().getUsername() + " has come online").color(YELLOW));
+					p.sendMessage(text(e.getPlayer().getUsername()).append(translatable("crystalized.proxy.friends.joined")).color(YELLOW));
 				}
 			}
 		}
@@ -289,12 +290,12 @@ class MsgCommand implements SimpleCommand {
 		}
 		Player p = server.getPlayer(invocation.arguments()[0]).orElse(null);
 		if (p == null) {
-			invocation.source().sendMessage(text("Couldn't find that player").color(RED));
+			invocation.source().sendMessage(translatable("crystalized.proxy.msg.not_found").color(RED));
 			return;
 		}
 
 		if(!Settings.isAllowed("dms", p, (Player)invocation.source())){
-			invocation.source().sendMessage(text("You cannot send messages to " + p.getUsername()).color(RED));
+			invocation.source().sendMessage(translatable("crystalized.proxy.msg.not_allowed", List.of(Component.text(p.getUsername()))).color(RED));
 			return;
 		}
 
@@ -305,8 +306,8 @@ class MsgCommand implements SimpleCommand {
 			message = message.append(text(" " + arg));
 		}
 		invocation.source()
-				.sendMessage(text("[You -> " + p.getUsername() + "] ").append(message).color(NamedTextColor.AQUA));
-		p.sendMessage(text("[" + messenger_name + " -> You] ").append(message).color(NamedTextColor.AQUA));
+				.sendMessage(text("[").append(translatable("crystalized.generic.you")).append(text(" -> " + p.getUsername() + "] ")).append(message).color(NamedTextColor.AQUA));
+		p.sendMessage(text("[" + messenger_name + " -> ").append(translatable("crystalized.generic.you")).append(text("] ")).append(message).color(NamedTextColor.AQUA));
 	}
 
 	@Override
@@ -337,7 +338,7 @@ class BroadCastCommand implements RawCommand {
 
 	@Override
 	public void execute(final Invocation invocation) {
-		Component message = text("!!IMPORTANT SERVER BROADCAST!!\n").color(YELLOW);
+		Component message = translatable("crystalized.generic.broadcast").color(YELLOW);
 		message = message.append(text(invocation.arguments()));
 		message.append(text("\n"));
 		Audience.audience(server.getAllPlayers()).sendMessage(message);

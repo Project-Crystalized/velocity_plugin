@@ -1,10 +1,12 @@
 package gg.crystalized;
 
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
 
 
 import java.nio.ByteBuffer;
 import java.sql.*;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,8 +15,12 @@ import java.util.UUID;
 public class Databases {
     public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql";
     private static Connection conn = null;
+    private static ProxyServer server = null;
+    private static Velocity_plugin plugin = null;
 
-    public static void setConn(){
+    public static void setConn(ProxyServer s, Velocity_plugin p){
+        server = s;
+        plugin = p;
         try{
             Class.forName("org.sqlite.JDBC");
             conn = DriverManager.getConnection(LOBBY);
@@ -159,7 +165,7 @@ public class Databases {
             prepared.executeUpdate();
         }catch(SQLException e) {
             Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info("couldn't set online for " + p.getUsername() + " UUID: " + p.getUniqueId());
         }
     }
 

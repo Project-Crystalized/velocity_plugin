@@ -56,16 +56,16 @@ public class PartySystem {
 			return;
 		}
 		if (party.members.get(0) == p) {
-			Audience.audience(party.members).sendMessage(text("The party leader has left"));
+			Audience.audience(party.members).sendMessage(translatable("crystalized.proxy.party.remove.leader"));
 			if (party.members.size() == 1) {
 				partys.remove(party);
 				return;
 			}
 			Audience.audience(party.members)
-					.sendMessage(text(party.members.get(1).getUsername() + " is the new party leader"));
+					.sendMessage(text(party.members.get(1).getUsername()).append(Component.translatable("crystalized.proxy.party.new_leader")));
 		}
 		Audience.audience(party.members)
-				.sendMessage(text("Player \"" + p.getUsername() + "\" has left the party"));
+				.sendMessage(text(p.getUsername()).append(translatable("crystalized.proxy.party.remove.left")));
 		party.members.remove(p);
 	}
 }
@@ -88,13 +88,13 @@ class Party {
 
 	public Component render() {
 		Component c = text("---------------------------\n")
-				.append(text("Party Size: (" + members.size() + ")\n\n"))
-				.append(text("Party Members: "));
+				.append(translatable("crystalized.proxy.party.render.size").append(Component.text("(" + members.size() + ")\n\n")))
+				.append(translatable("crystalized.proxy.party.render.members"));
 
 		for (Player p : members) {
 			c = c.append(text(p.getUsername() + ", "));
 		}
-		c = c.append(text("\nInvited Players: "));
+		c = c.append(translatable("crystalized.proxy.party.render.invited"));
 		for (String s : invited) {
 			c = c.append(text(s + ", "));
 		}
@@ -186,12 +186,12 @@ class PartyCommand implements SimpleCommand {
 				|| args[0].equals("join") || args[0].equals("accept") || args[0].equals("kick") || args[0].equals("remove")
 				|| args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
 			if (args.length < 2) {
-				invocation.source().sendMessage(text("Please specify a player").color(RED));
+				invocation.source().sendMessage(translatable("crystalized.proxy.friends.specify").color(RED));
 				return;
 			}
 			mentioned_player = server.getPlayer(args[1]).orElse(null);
 			if (mentioned_player == null) {
-				invocation.source().sendMessage(text("Couldnt find Player \"" + args[1] + "\"").color(RED));
+				invocation.source().sendMessage(translatable("crystalized.proxy.friends.not_found", List.of(Component.text(args[1]))).color(RED));
 				return;
 			}
 		}
@@ -203,7 +203,7 @@ class PartyCommand implements SimpleCommand {
 				|| args[0].equals("kick") || args[0].equals("leader") || args[0].equals("transfer")
 				|| args[0].equals("promote")) {
 			if (party == null) {
-				invocation.source().sendMessage(text("You are not in a party").color(RED));
+				invocation.source().sendMessage(translatable("crystalized.proxy.party.remove.not_in_party").color(RED));
 				return;
 			}
 		}
@@ -212,7 +212,7 @@ class PartyCommand implements SimpleCommand {
 		if (args[0].equals("disband") || args[0].equals("remove") || args[0].equals("kick")
 				|| args[0].equals("leader") || args[0].equals("transfer") || args[0].equals("promote")) {
 			if (!party.is_leader(executer)) {
-				invocation.source().sendMessage(text("You are not the leader of the party").color(RED));
+				invocation.source().sendMessage(translatable("crystalized.proxy.party.not_leader").color(RED));
 				return;
 			}
 		}
@@ -222,41 +222,41 @@ class PartyCommand implements SimpleCommand {
 
 		} else if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")) {
 			if(Settings.isReceiveAllowed("party_requests", mentioned_player, executer)){
-				executer.sendMessage(text("You cannot party invite " + mentioned_player.getUsername()).color(RED));
+				executer.sendMessage(translatable("crystalized.proxy.party.invite.cannot", List.of(Component.text(mentioned_player.getUsername()))).color(RED));
 				return;
 			}
 			if (party == null) {
-				invocation.source().sendMessage(text("Creating a new party").color(DARK_PURPLE));
+				invocation.source().sendMessage(translatable("crystalized.proxy.party.new").color(DARK_PURPLE));
 				party = new Party(executer);
 				ps.partys.add(party);
 			}
 			if (!party.is_leader(executer)) {
-				invocation.source().sendMessage(text("You are not the leader of the party").color(RED));
+				invocation.source().sendMessage(translatable("crystalized.proxy.party.not_leader").color(RED));
 				return;
 			}
-			Audience.audience(party.members).sendMessage(text("Player \"" + args[1] + "\" has been invited to your Party").color(TextColor.fromHexString("#f299da")));
+			Audience.audience(party.members).sendMessage(translatable("crystalized.proxy.party.invite.player", List.of(Component.text(args[1]))).color(TextColor.fromHexString("#f299da")));
 			party.invited.remove(args[1]);
 			party.invited.add(args[1]);
 			Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/party join " + executer.getUsername()));
 			mentioned_player.sendMessage(
-					text("You have been invited to join the party of " + (executer).getUsername()).color(TextColor.fromHexString("#f299da")).append(accept));
+					translatable("crystalized.proxy.party.invite.you", List.of(Component.text((executer).getUsername()))).color(TextColor.fromHexString("#f299da")).append(accept));
 
 		} else if (args[0].equals("join") || args[0].equals("accept")) {
 			if (party != null) {
-				invocation.source().sendMessage(text("You are already in a party").color(RED));
+				invocation.source().sendMessage(translatable("crystalized.proxy.party.join.already_in_party").color(RED));
 				return;
 			}
 			Party party_to_join = ps.get_party_of(server.getPlayer(args[1]).orElse(null));
 			if (party_to_join == null) {
-				invocation.source().sendMessage(text("This player is currently not in a party").color(RED));
+				invocation.source().sendMessage(translatable("crystalized.proxy.party.join.not_in_party").color(RED));
 				return;
 			}
 			if (!party_to_join.invited.contains(executer.getUsername())) {
-				executer.sendMessage(text("You have not been invited to that party").color(RED));
+				executer.sendMessage(translatable("crystalized.proxy.party.invite.not").color(RED));
 				return;
 			}
-			Audience.audience(party_to_join.members).sendMessage(text("Player \"" + mentioned_player.getUsername() + "\" has joined your Party").color(TextColor.fromHexString("#f299da")));
-			executer.sendMessage(text("You have joined the party of " + args[1]).color(TextColor.fromHexString("#f299da")));
+			Audience.audience(party_to_join.members).sendMessage(text(mentioned_player.getUsername()).append(translatable("crystalized.proxy.party.join.player")).color(TextColor.fromHexString("#f299da")));
+			executer.sendMessage(translatable("crystalized.proxy.party.join.you", List.of(text(args[1]))).color(TextColor.fromHexString("#f299da")));
 			party_to_join.members.add(executer);
 			//plugin.que_system.remove_player_from_que(executer);
             QueueSystem.removeFromAllQueues(executer);
@@ -267,21 +267,21 @@ class PartyCommand implements SimpleCommand {
             }
 		} else if (args[0].equals("kick") || args[0].equals("remove")) {
 			if (mentioned_player == executer) {
-				invocation.source().sendMessage(text("You can't kick yourself").color(RED));
+				invocation.source().sendMessage(translatable("crystalized.proxy.party.kick.you").color(RED));
 				return;
 			}
 			if (!party.members.contains(mentioned_player)) {
-				invocation.source().sendMessage(text("Player \"" + args[1] + "\" was not in your party").color(RED));
+				invocation.source().sendMessage(text(args[1]).append(translatable("crystalized.proxy.party.kick.not_in_party")).color(RED));
 				return;
 			}
 			Audience.audience(party.members)
-					.sendMessage(text("Kicking Player \"" + args[1] + "\" from your party").color(TextColor.fromHexString("#f299da")));
+					.sendMessage(translatable("crystalized.proxy.party.kick.player", List.of(text(args[1]))).color(TextColor.fromHexString("#f299da")));
 			party.invited.remove(args[1]);
 			ps.remove_player(mentioned_player);
             QueueSystem.removeFromAllQueues(mentioned_player);
 
 		} else if (args[0].equals("disband")) {
-			Audience.audience(party.members).sendMessage(text("Your party has been disbanded").color(TextColor.fromHexString("#f299da")));
+			Audience.audience(party.members).sendMessage(translatable("crystalized.proxy.party.disband").color(TextColor.fromHexString("#f299da")));
 			ps.partys.remove(party);
 			for (Player p : party.members) {
                 QueueSystem.removeFromAllQueues(executer);
@@ -295,7 +295,7 @@ class PartyCommand implements SimpleCommand {
 			int promoted_index = party.members.indexOf(mentioned_player);
 			Collections.swap(party.members, 0, promoted_index);
 			Audience.audience(party.members)
-					.sendMessage(text("Promoting \"" + args[1] + "\" to party leader").color(TextColor.fromHexString("#f299da")));
+					.sendMessage(translatable("crystalized.proxy.party.promote", List.of(text(args[0]))).color(TextColor.fromHexString("#f299da")));
 		}
 
 		// we are here if the command succeded, so we now update the party
