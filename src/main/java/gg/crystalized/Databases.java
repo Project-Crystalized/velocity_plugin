@@ -1,37 +1,19 @@
 package gg.crystalized;
 
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ProxyServer;
-
-
 import java.nio.ByteBuffer;
 import java.sql.*;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Properties;
 import java.util.UUID;
 
 public class Databases {
     public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql";
-    private static Connection conn = null;
-    private static ProxyServer server = null;
-    private static Velocity_plugin plugin = null;
-
-    public static void setConn(ProxyServer s, Velocity_plugin p){
-        server = s;
-        plugin = p;
-        try{
-            Class.forName("org.sqlite.JDBC");
-            conn = DriverManager.getConnection(LOBBY);
-        }catch(SQLException | ClassNotFoundException e){
-            Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("failed to make connection");
-        }
-    }
 
     public static HashMap<String, Object> fetchPlayerData(Player p){
-        try {
+        try (Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             ResultSet set = prep.executeQuery();
@@ -51,7 +33,7 @@ public class Databases {
     }
 
     public static HashMap<String, Object> fetchPlayerData(byte[] p) {
-        try {
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
             prep.setBytes(1, p);
             ResultSet set = prep.executeQuery();
@@ -71,7 +53,7 @@ public class Databases {
     }
 
     public static ArrayList<Object[]> fetchFriends(Player p){
-        try{
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM Friends WHERE player_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             ResultSet set = prep.executeQuery();
@@ -96,6 +78,10 @@ public class Databases {
 
     public static void addFriend(Player p, Player friend){
         try{
+            Properties sqlprop = new Properties();
+            sqlprop.put("transaction_mode", "IMMEDIATE");
+            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+            conn.setAutoCommit(false);
             PreparedStatement prep = conn.prepareStatement("INSERT INTO Friends(player_uuid, friend_uuid, date) VALUES(?, ?, ?);");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, uuid_to_bytes(friend));
@@ -107,6 +93,8 @@ public class Databases {
             prep.setBytes(1, uuid_to_bytes(friend));
             prep.setBytes(2, uuid_to_bytes(p));
             prep.executeUpdate();
+            conn.commit();
+            conn.close();
         }catch(Exception e){
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("failed adding friends to database");
@@ -115,6 +103,10 @@ public class Databases {
 
     public static void removeFriend(Player p, byte[] friend){
         try{
+            Properties sqlprop = new Properties();
+            sqlprop.put("transaction_mode", "IMMEDIATE");
+            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+            conn.setAutoCommit(false);
             PreparedStatement prep = conn.prepareStatement("DELETE FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, friend);
@@ -122,6 +114,8 @@ public class Databases {
             prep.setBytes(1, friend);
             prep.setBytes(2, uuid_to_bytes(p));
             prep.executeUpdate();
+            conn.commit();
+            conn.close();
         }catch(Exception e){
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("failed adding cosmetic to database");
@@ -130,11 +124,17 @@ public class Databases {
 
     public static void updatePlayerNames(Player p){
         try{
+            Properties sqlprop = new Properties();
+            sqlprop.put("transaction_mode", "IMMEDIATE");
+            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+            conn.setAutoCommit(false);
             String makeNewEntry = "UPDATE LobbyPlayers SET player_name = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
             prepared.setString(1, p.getUsername());
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
+            conn.commit();
+            conn.close();
         }catch(SQLException e) {
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
@@ -156,6 +156,10 @@ public class Databases {
      */
     public static void setOnline(Player p, boolean online){
         try{
+            Properties sqlprop = new Properties();
+            sqlprop.put("transaction_mode", "IMMEDIATE");
+            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+            conn.setAutoCommit(false);
             String makeNewEntry = "UPDATE LobbyPlayers SET online = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
             int on = 0;
@@ -163,6 +167,8 @@ public class Databases {
             prepared.setInt(1, on);
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
+            conn.commit();
+            conn.close();
         }catch(SQLException e) {
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("couldn't set online for " + p.getUsername() + " UUID: " + p.getUniqueId());
@@ -189,7 +195,7 @@ public class Databases {
     }
 
     public static boolean areFriends(Player p, Player friend){
-        try{
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT COUNT(*) AS count FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, uuid_to_bytes(friend));
@@ -205,7 +211,7 @@ public class Databases {
     }
 
     public static boolean areFriends(Player p, byte[] friend){
-        try{
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT COUNT(*) AS count FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             prep.setBytes(2, friend);
@@ -221,7 +227,7 @@ public class Databases {
     }
 
     public static HashMap<String, Object> fetchSettings(Player p){
-        try{
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM Settings WHERE player_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             ResultSet set = prep.executeQuery();
@@ -242,11 +248,17 @@ public class Databases {
 
     public static void updateSetting(Player p, String dbSettingName, double value){
         try{
+            Properties sqlprop = new Properties();
+            sqlprop.put("transaction_mode", "IMMEDIATE");
+            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+            conn.setAutoCommit(false);
             String makeNewEntry = "UPDATE Settings SET "+ dbSettingName + " = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
             prepared.setDouble(1, value);
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
+            conn.commit();
+            conn.close();
         }catch(SQLException e) {
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());

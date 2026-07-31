@@ -32,6 +32,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -79,7 +80,6 @@ public class Velocity_plugin {
 
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent event) {
-		Databases.setConn(server, this);
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
 		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
 
