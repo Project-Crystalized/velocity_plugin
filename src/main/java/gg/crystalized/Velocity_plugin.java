@@ -45,7 +45,8 @@ public class Velocity_plugin {
 	public static Logger logger;
 
     public static QueueSystem queueSystem;
-	public BanCommand ban_command;
+	public static BanCommand ban_command;
+	public static UnbanCommand unban_command;
 	public PartySystem party_system;
 	public FriendSystem friend_system;
 
@@ -95,6 +96,10 @@ public class Velocity_plugin {
 		ban_command = new BanCommand(server);
 		commandManager.register(commandMetaban, ban_command);
 
+		CommandMeta commandMetaunban = commandManager.metaBuilder("unban").plugin(this).build();
+		unban_command = new UnbanCommand(server);
+		commandManager.register(commandMetaunban, unban_command);
+
 		CommandMeta commandMetaBroadcast = commandManager.metaBuilder("broadcast").plugin(this).build();
 		commandManager.register(commandMetaBroadcast, new BroadCastCommand(server));
 
@@ -111,12 +116,10 @@ public class Velocity_plugin {
 	@Subscribe
 	public void onPreConnect(PreLoginEvent e) {
 		if (ban_command.isBanned(e.getUniqueId())) {
-            //TODO make this better with colour/visuals and replace placeholders with text.
 			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(
-                    text("You've been banned by ")
-                            .append(text("[Name here]")).append(text(" for the reason: \n\""))
-                            .append(text("[Reason here]")).append(text("\".\n"))
-                            .append(text("You will be unbanned in: ")).append(text("[time here]"))
+                    text("You've been banned for ").color(RED)
+                            .append(text(BanCommand.getBannedFor(e.getUniqueId())).color(RED)).append(text("\n").color(RED))
+                            .append(text("You will be unbanned in: ").color(RED)).append(text(BanCommand.getBannedUntil(e.getUniqueId())).color(RED))
             ));
 		}
 	}

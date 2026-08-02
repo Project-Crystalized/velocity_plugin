@@ -52,6 +52,23 @@ public class Databases {
         }
     }
 
+    public static UUID getUUID(String name){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT player_uuid FROM LobbyPlayers WHERE player_name = ?;");
+            prep.setString(1, name);
+            ResultSet set = prep.executeQuery();
+            set.next();
+            ByteBuffer bb = ByteBuffer.wrap(set.getBytes("player_uuid"));
+            long high = bb.getLong();
+            long low = bb.getLong();
+            return new UUID(high, low);
+        } catch (SQLException e) {
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get uuid for name");
+            return null;
+        }
+    }
+
     public static ArrayList<Object[]> fetchFriends(Player p){
         try(Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM Friends WHERE player_uuid = ?;");
