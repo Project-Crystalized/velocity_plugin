@@ -37,7 +37,7 @@ public class SetRankedCommand implements SimpleCommand {
 
 		ByteArrayDataOutput out = ByteStreams.newDataOutput();
 		out.writeUTF(invocation.arguments()[1]);
-		boolean worked = rs.sendPluginMessage(LS_CHANNEL, out.toByteArray());
+		boolean worked = rs.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
 
 		if (worked) {
 			invocation.source().sendPlainMessage("sent message \"" + invocation.arguments()[1] + "\" to the server");

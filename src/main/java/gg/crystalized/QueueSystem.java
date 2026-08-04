@@ -1,6 +1,7 @@
 package gg.crystalized;
 
 import com.google.common.io.ByteArrayDataInput;
+import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -9,6 +10,7 @@ import com.velocitypowered.api.command.*;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.proxy.ConnectionRequestBuilder;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
@@ -19,6 +21,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -50,7 +53,7 @@ public class QueueSystem {
 
         //NOTE: These need to be unique, no duplicates otherwise we may have issues with for loops and/or commands iterating through the queues list
         queues.add(new GameQueue(server, plugin, queueTypes.litestrike, 6, 10, translatable("crystalized.game.litestrike.name").color(NamedTextColor.GREEN)));
-        //queues.add(new GameQueue(server, plugin, queueTypes.litestrike_ranked, 6, 8, text("Litestrike Ranked").color(NamedTextColor.GREEN)));
+        queues.add(new GameQueue(server, plugin, queueTypes.litestrike_ranked, 6, 8, text("Litestrike Ranked").color(NamedTextColor.GREEN))); //FixMe
         queues.add(new GameQueue(server, plugin, queueTypes.knockoff, 3, 12, translatable("crystalized.game.knockoff.name").color(NamedTextColor.GOLD)));
         queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz, 3, 8, translatable("crystalized.game.crystalblitz.name").color(NamedTextColor.LIGHT_PURPLE)));
         //queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz_duos, 4, 16, text("Crystal Blitz duos").color(NamedTextColor.LIGHT_PURPLE)));
@@ -119,7 +122,6 @@ class GameQueue{
     ProxyServer proxyServer;
     public QueueSystem.queueTypes type;
     boolean queueTimerStarted = false;
-
     public Component name;
     int needed;
     int max;
@@ -133,7 +135,7 @@ class GameQueue{
         this.max = playersMaxLimit;
         this.name = visualName;
         for (RegisteredServer rs : proxyServer.getAllServers()) {
-            if (rs.getServerInfo().getName().startsWith(type.toString())) {
+            if (rs.getServerInfo().getName().startsWith(getSuperType(type).toString())) {
                 servers.add(new GameServer(rs, type));
             }
         }
@@ -164,14 +166,14 @@ class GameQueue{
                         }
                     }
                     case 0 -> {
-                        sendAllPlayersToServer();
+                        sendAllPlayersToServer(type);
                     }
                 }
                 for (Player p : players) {
                     p.sendActionBar(translatable("crystalized.generic.queue.for").append(name).append(text(" (" + players.size() + "/" + needed + "), ").append(translatable("crystalized.generic.queue.teleporting")).append(text(timer.toString()))));
                 }
                 if (timer.get().get() == 0) {
-                    sendAllPlayersToServer();
+                    sendAllPlayersToServer(type);
                     timer.set(new AtomicInteger(15));
                 }
             } else {
@@ -187,6 +189,16 @@ class GameQueue{
 
 
         }).repeat(1, TimeUnit.SECONDS).schedule();
+    }
+
+    public QueueSystem.queueTypes getSuperType(QueueSystem.queueTypes type){
+        //because litestrike and litestrike_ranked use the same servers this is e.g. if type = litestrike_ranked to find the type litestrike and use that instead
+        QueueSystem.queueTypes result = type;
+        for(QueueSystem.queueTypes t : QueueSystem.queueTypes.values()){
+            if(t == type) continue;
+            if(type.toString().startsWith(t.toString())) result = t;
+        }
+        return result;
     }
 
     public void addPlayerToQueue(Player p) {
@@ -213,7 +225,7 @@ class GameQueue{
         }
     }
 
-    public void sendAllPlayersToServer() {
+    public void sendAllPlayersToServer(QueueSystem.queueTypes type) {
         List<GameServer> templist = new ArrayList<>(servers);
         Collections.shuffle(templist);
         List<Player> playerList = new ArrayList<>(players); //copying here to prevent a ConcurrentModificationException
@@ -222,9 +234,13 @@ class GameQueue{
         for (GameServer s : templist) {
             if (s.available.equals(QueueSystem.ServerStatus.online_free)) {
                 s.playersInGame = playerList;
+                CompletableFuture<ConnectionRequestBuilder.Result> future = null;
                 for (Player p : playerList) {
-                    p.createConnectionRequest(s.server).connect();
+                    if(future == null) future = p.createConnectionRequest(s.server).connect();
+                    else p.createConnectionRequest(s.server).connect();
                 }
+                CompletableFuture<ConnectionRequestBuilder.Result> finalFuture = future;
+                sendAdditionalMessage(s, type, finalFuture);
                 return;
             }
         }
@@ -232,6 +248,21 @@ class GameQueue{
         for (Player p : playerList) {
             p.sendMessage(translatable("crystalized.generic.queue.unavailable").color(NamedTextColor.RED).append(name).append(translatable("crystalized.generic.queue.try_again").color(NamedTextColor.RED)));
         }
+    }
+
+    public void sendAdditionalMessage(GameServer s, QueueSystem.queueTypes type, CompletableFuture<ConnectionRequestBuilder.Result> future){
+        if(future == null) return;
+        while(!future.isDone()){}
+        ByteArrayDataOutput out = ByteStreams.newDataOutput();
+        if(type != QueueSystem.queueTypes.litestrike && type != QueueSystem.queueTypes.litestrike_ranked){
+            return;
+        }
+        if(type == QueueSystem.queueTypes.litestrike) {
+            out.writeUTF("ranked_off");
+        }else if(type == QueueSystem.queueTypes.litestrike_ranked){
+            out.writeUTF("ranked_on");
+        }
+        s.server.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
     }
 }
 

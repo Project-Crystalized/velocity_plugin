@@ -53,6 +53,7 @@ public class Velocity_plugin {
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
 	public static final MinecraftChannelIdentifier CRYSTALIZED_ESSENTIALS = MinecraftChannelIdentifier.from("crystalized:essentials");
 
+
 	@Inject
 	public Velocity_plugin(ProxyServer server, Logger logger) {
 		this.server = server;
@@ -83,6 +84,7 @@ public class Velocity_plugin {
 	public void onProxyInitialization(ProxyInitializeEvent event) {
 		server.getChannelRegistrar().register(CRYSTAL_CHANNEL);
 		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
+		server.getChannelRegistrar().register(SetRankedCommand.LS_CHANNEL);
 
 		this.party_system = new PartySystem(server, this);
 		this.friend_system = new FriendSystem(server, this);
@@ -214,11 +216,15 @@ public class Velocity_plugin {
 
     QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 		if (message2.contains("litestrike")) {
-            QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());
+			if(message2.contains("ranked")) {
+				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).addPlayerToQueue(backend_conn.getPlayer());
+			}else {
+				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());
+			}
 		} else if (message2.contains("knockoff")) {
             QueueSystem.getQueue(QueueSystem.queueTypes.knockoff).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("crystalblitz")) {
-            QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
+			QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			RegisteredServer lobby = server.getServer("lobby").get();
 			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
