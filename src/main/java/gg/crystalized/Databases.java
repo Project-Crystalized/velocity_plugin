@@ -68,6 +68,42 @@ public class Databases {
             return null;
         }
     }
+    public static boolean isPlayerInDatabase(UUID p){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT COUNT(*) AS count FROM LobbyPlayers WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(p));
+            if(prep.executeQuery().getInt("count") > 0){
+                return true;
+            }
+            return false;
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't check existence in database for UUID: " + p);
+            return false;
+        }
+    }
+
+    public static void deletePlayerData(Player p){
+        try (Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("DELETE FROM LobbyPlayers WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(p));
+            prep.executeUpdate();
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't delete data for " + p.getUsername() + "UUID: " + p.getUniqueId());
+        }
+    }
+
+    public static void deleteSettings(Player p){
+        try (Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("DELETE FROM Settings WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(p));
+            prep.executeUpdate();
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't delete settings for " + p.getUsername() + "UUID: " + p.getUniqueId());
+        }
+    }
 
     public static ArrayList<Object[]> fetchFriends(Player p){
         try(Connection conn = DriverManager.getConnection(LOBBY)){
@@ -195,6 +231,12 @@ public class Databases {
     public static byte[] uuid_to_bytes(Player p) {
         ByteBuffer bb = ByteBuffer.allocate(16);
         UUID uuid = p.getUniqueId();
+        bb.putLong(uuid.getMostSignificantBits());
+        bb.putLong(uuid.getLeastSignificantBits());
+        return bb.array();
+    }
+    public static byte[] uuid_to_bytes(UUID uuid) {
+        ByteBuffer bb = ByteBuffer.allocate(16);
         bb.putLong(uuid.getMostSignificantBits());
         bb.putLong(uuid.getLeastSignificantBits());
         return bb.array();

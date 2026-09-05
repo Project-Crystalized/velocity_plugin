@@ -10,7 +10,9 @@ import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.command.CommandExecuteEvent.CommandResult;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
+import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
@@ -32,6 +34,8 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -43,12 +47,13 @@ public class Velocity_plugin {
 
 	public final ProxyServer server;
 	public static Logger logger;
-
+	final static boolean CLOSED_BETA = true;
     public static QueueSystem queueSystem;
 	public static BanCommand ban_command;
 	public static UnbanCommand unban_command;
 	public PartySystem party_system;
 	public FriendSystem friend_system;
+	private static ArrayList<UUID> newPlayers = new ArrayList<>();
 
 	public static final MinecraftChannelIdentifier CRYSTAL_CHANNEL = MinecraftChannelIdentifier.from("crystalized:main");
 	public static final MinecraftChannelIdentifier CRYSTALIZED_ESSENTIALS = MinecraftChannelIdentifier.from("crystalized:essentials");
@@ -111,19 +116,40 @@ public class Velocity_plugin {
 		CommandMeta commandMetaSetRanked = commandManager.metaBuilder("ls_set_ranked").plugin(this).build();
 		commandManager.register(commandMetaSetRanked, new SetRankedCommand(server));
 
+		CommandMeta commandMetaKeygen = commandManager.metaBuilder("keygen").plugin(this).build();
+		commandManager.register(commandMetaKeygen, new KeyGenCommand());
+
+		CommandMeta commandMetaKey = commandManager.metaBuilder("key").plugin(this).build();
+		commandManager.register(commandMetaKey, new KeyCommand());
+
         queueSystem = new QueueSystem(server, this); //new version
         server.getEventManager().register(this, queueSystem);
 	}
 
 	@Subscribe
 	public void onPreConnect(PreLoginEvent e) {
+		if(CLOSED_BETA && !Databases.isPlayerInDatabase(e.getUniqueId())) {
+		 newPlayers.add(e.getUniqueId());
+		}
 		if (ban_command.isBanned(e.getUniqueId())) {
 			e.setResult(PreLoginEvent.PreLoginComponentResult.denied(
                     text("You've been banned for ").color(RED)
                             .append(text(BanCommand.getBannedFor(e.getUniqueId())).color(RED)).append(text("\n").color(RED))
                             .append(text("You will be unbanned in: ").color(RED)).append(text(BanCommand.getBannedUntil(e.getUniqueId())).color(RED))
             ));
+			newPlayers.remove(e.getUniqueId());
 		}
+	}
+
+	@Subscribe
+	public void onPostConnect(ServerPostConnectEvent e){
+		if(!newPlayers.contains(e.getPlayer().getUniqueId())) return;
+		Databases.deletePlayerData(e.getPlayer());
+		Databases.deleteSettings(e.getPlayer());
+		Optional<RegisteredServer> s = server.getServer("limbo");
+		if(s.isEmpty()) return;
+		e.getPlayer().createConnectionRequest(s.get()).connect();
+		newPlayers.remove(e.getPlayer().getUniqueId());
 	}
 
 	@Subscribe
