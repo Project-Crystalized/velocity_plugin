@@ -31,7 +31,7 @@ import static net.kyori.adventure.text.Component.translatable;
 
 public class QueueSystem {
     private Velocity_plugin velocity;
-    public static ProxyServer server;
+    public ProxyServer server;
     public static List<GameQueue> queues = new ArrayList<>();
 
     public enum ServerStatus{
@@ -332,7 +332,7 @@ class QueueCommand{
         LiteralCommandNode<CommandSource> commandNode = BrigadierCommand.literalArgumentBuilder("unqueue").executes(ctx -> {
                     if (ctx.getSource() instanceof Player p) {
                         QueueSystem.removeFromAllQueues((Player) ctx.getSource());
-                        RegisteredServer lobby = QueueSystem.server.getServer("lobby").get();
+                        RegisteredServer lobby = proxy.getServer("lobby").get();
                         p.createConnectionRequest(lobby).connect();
                     }
                     return Command.SINGLE_SUCCESS;
