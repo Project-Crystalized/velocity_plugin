@@ -47,7 +47,7 @@ public class Velocity_plugin {
 
 	public final ProxyServer server;
 	public static Logger logger;
-	final static boolean CLOSED_BETA = true;
+	final static boolean CLOSED_BETA = false;
     public static QueueSystem queueSystem;
 	public static BanCommand ban_command;
 	public static UnbanCommand unban_command;
