@@ -109,10 +109,17 @@ class KeyCommand implements SimpleCommand{
         }
         if(invocation.arguments().length == 0){
             invocation.source().sendRichMessage("<dark_aqua>Please input your access key.</dark_aqua>");
+            return;
         }
         String key = invocation.arguments()[0].replace("\n", "");
         if(KeyGenCommand.isUnique(key)){
             invocation.source().sendRichMessage("<dark_red>This key doesn't exist or has already been used.</dark_red>");
+            return;
+        }
+
+        if(Databases.isPlayerInDatabase(p.getUniqueId())){
+            invocation.source().sendRichMessage("<dark_red>You already have access.</dark_red>");
+            return;
         }
         deleteKey(key);
 
