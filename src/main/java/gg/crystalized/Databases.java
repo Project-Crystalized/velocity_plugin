@@ -129,10 +129,9 @@ public class Databases {
     }
 
     public static void updatePlayerNames(Player p){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+        Properties sqlprop = new Properties();
+        sqlprop.put("transaction_mode", "IMMEDIATE");
+        try(Connection conn = DriverManager.getConnection(LOBBY, sqlprop)){
             conn.setAutoCommit(false);
             String makeNewEntry = "UPDATE LobbyPlayers SET player_name = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
@@ -140,7 +139,6 @@ public class Databases {
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
             conn.commit();
-            conn.close();
         }catch(SQLException e) {
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
@@ -161,10 +159,9 @@ public class Databases {
     }
      */
     public static void setOnline(Player p, boolean online){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+        Properties sqlprop = new Properties();
+        sqlprop.put("transaction_mode", "IMMEDIATE");
+        try(Connection conn = DriverManager.getConnection(LOBBY, sqlprop)){
             conn.setAutoCommit(false);
             String makeNewEntry = "UPDATE LobbyPlayers SET online = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
@@ -174,7 +171,6 @@ public class Databases {
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
             conn.commit();
-            conn.close();
         }catch(SQLException e) {
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("couldn't set online for " + p.getUsername() + " UUID: " + p.getUniqueId());
