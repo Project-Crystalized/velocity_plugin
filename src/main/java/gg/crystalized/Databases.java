@@ -12,46 +12,6 @@ import java.util.UUID;
 public class Databases {
     public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql?busy_timeout=5000";
 
-    public static HashMap<String, Object> fetchPlayerData(Player p){
-        try (Connection conn = DriverManager.getConnection(LOBBY)){
-            PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
-            prep.setBytes(1, uuid_to_bytes(p));
-            ResultSet set = prep.executeQuery();
-            set.next();
-            ResultSetMetaData data = set.getMetaData();
-            int count = data.getColumnCount();
-            HashMap<String, Object> map = new HashMap<>();
-            for(int i = 1; i <= count; i++){
-                map.put(data.getColumnLabel(i), set.getObject(data.getColumnLabel(i)));
-            }
-            return map;
-        }catch(SQLException e){
-            Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't get data for " + p.getUsername() + "UUID: " + p.getUniqueId());
-            return null;
-        }
-    }
-
-    public static HashMap<String, Object> fetchPlayerData(byte[] p) {
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
-            PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
-            prep.setBytes(1, p);
-            ResultSet set = prep.executeQuery();
-            set.next();
-            ResultSetMetaData data = set.getMetaData();
-            int count = data.getColumnCount();
-            HashMap<String, Object> map = new HashMap<>();
-            for (int i = 1; i <= count; i++) {
-                map.put(data.getColumnLabel(i), set.getObject(data.getColumnLabel(i)));
-            }
-            return map;
-        } catch (SQLException e) {
-            Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't get data for byte[]");
-            return null;
-        }
-    }
-
     public static UUID getUUID(String name){
         try(Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT player_uuid FROM LobbyPlayers WHERE player_name = ?;");
@@ -105,19 +65,16 @@ public class Databases {
         }
     }
 
-    public static ArrayList<Object[]> fetchFriends(Player p){
+    public static ArrayList<Object[]> fetchFriendsWithNames(Player p){
         try(Connection conn = DriverManager.getConnection(LOBBY)){
-            PreparedStatement prep = conn.prepareStatement("SELECT * FROM Friends WHERE player_uuid = ?;");
+            PreparedStatement prep = conn.prepareStatement("SELECT f.friend_uuid, lp.player_name FROM Friends f LEFT JOIN LobbyPlayers lp ON lp.player_uuid = f.friend_uuid WHERE f.player_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
             ResultSet set = prep.executeQuery();
-            ResultSetMetaData data = set.getMetaData();
-            int count = data.getColumnCount();
             ArrayList<Object[]> list = new ArrayList<>();
             while(set.next()) {
-                Object[] o = new Object[3];
-                for (int i = 1; i <= count; i++) {
-                    o[i-1] = set.getObject(data.getColumnLabel(i));
-                }
+                Object[] o = new Object[2];
+                o[0] = set.getObject(1);
+                o[1] = set.getObject(2);
                 list.add(o);
             }
 
@@ -298,25 +255,6 @@ public class Databases {
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("couldn't get settings data for " + p.getUsername() + "UUID: " + p.getUniqueId());
             return null;
-        }
-    }
-
-    public static void updateSetting(Player p, String dbSettingName, double value){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
-            conn.setAutoCommit(false);
-            String makeNewEntry = "UPDATE Settings SET "+ dbSettingName + " = ? WHERE player_uuid = ?";
-            PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
-            prepared.setDouble(1, value);
-            prepared.setBytes(2, uuid_to_bytes(p));
-            prepared.executeUpdate();
-            conn.commit();
-            conn.close();
-        }catch(SQLException e) {
-            Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
         }
     }
 }

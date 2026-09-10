@@ -13,7 +13,6 @@ import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
-import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ConsoleCommandSource;
@@ -262,17 +261,17 @@ public class Velocity_plugin {
 	}
 
 	@Subscribe
-	public void onPreConnect(ServerPreConnectEvent e){
+	public void onPostLogin(PostLoginEvent e){
 		Databases.updatePlayerNames(e.getPlayer());
 		Databases.setOnline(e.getPlayer(), true);
 		Friend.allFriends.add(new Friend(e.getPlayer()));
-		ArrayList<Object[]> list = Databases.fetchFriends(e.getPlayer());
+		ArrayList<Object[]> list = Databases.fetchFriendsWithNames(e.getPlayer());
 		if(list == null){
 			return;
 		}
 		for(Player p : server.getAllPlayers()){
 			for(Object[] o : list){
-				if(Arrays.equals((byte[]) o[1], Databases.uuid_to_bytes(p))){
+				if(Arrays.equals((byte[]) o[0], Databases.uuid_to_bytes(p))){
 					p.sendMessage(text(e.getPlayer().getUsername()).append(translatable("crystalized.proxy.friends.joined")).color(YELLOW));
 				}
 			}
