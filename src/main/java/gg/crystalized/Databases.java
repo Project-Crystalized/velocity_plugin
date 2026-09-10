@@ -10,7 +10,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 public class Databases {
-    public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql";
+    public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql?busy_timeout=5000";
 
     public static HashMap<String, Object> fetchPlayerData(Player p){
         try (Connection conn = DriverManager.getConnection(LOBBY)){
@@ -130,10 +130,9 @@ public class Databases {
     }
 
     public static void addFriend(Player p, Player friend){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+        Properties sqlprop = new Properties();
+        sqlprop.put("transaction_mode", "IMMEDIATE");
+        try(Connection conn = DriverManager.getConnection(LOBBY, sqlprop)){
             conn.setAutoCommit(false);
             PreparedStatement prep = conn.prepareStatement("INSERT INTO Friends(player_uuid, friend_uuid, date) VALUES(?, ?, ?);");
             prep.setBytes(1, uuid_to_bytes(p));
@@ -147,18 +146,16 @@ public class Databases {
             prep.setBytes(2, uuid_to_bytes(p));
             prep.executeUpdate();
             conn.commit();
-            conn.close();
-        }catch(Exception e){
+        }catch(SQLException e){
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("failed adding friends to database");
         }
     }
 
     public static void removeFriend(Player p, byte[] friend){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+        Properties sqlprop = new Properties();
+        sqlprop.put("transaction_mode", "IMMEDIATE");
+        try(Connection conn = DriverManager.getConnection(LOBBY, sqlprop)){
             conn.setAutoCommit(false);
             PreparedStatement prep = conn.prepareStatement("DELETE FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
@@ -168,10 +165,9 @@ public class Databases {
             prep.setBytes(2, uuid_to_bytes(p));
             prep.executeUpdate();
             conn.commit();
-            conn.close();
-        }catch(Exception e){
+        }catch(SQLException e){
             Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("failed adding cosmetic to database");
+            Velocity_plugin.logger.info("failed removing friends from database");
         }
     }
 

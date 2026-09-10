@@ -196,6 +196,11 @@ class FriendsCommand implements SimpleCommand{
                 return;
             }
             if(args[0].equals("accept")){
+                if(Databases.areFriends(executer, requester)){
+                    executer.sendMessage(translatable("crystalized.proxy.friends.already_friends", List.of(Component.text(requester.getUsername()))).color(RED));
+                    exe.currentlyRequesting.remove(requester);
+                    return;
+                }
                 Databases.addFriend(executer, requester);
                 requester.sendMessage(text(executer.getUsername()).append(Component.translatable("crystalized.proxy.friends.accepted")).color(YELLOW));
                 executer.sendMessage(translatable("crystalized.proxy.friends.accepted_from").append(Component.text(requester.getUsername())).color(YELLOW));

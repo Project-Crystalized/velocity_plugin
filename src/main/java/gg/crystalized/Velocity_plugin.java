@@ -33,6 +33,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -266,9 +267,12 @@ public class Velocity_plugin {
 		Databases.setOnline(e.getPlayer(), true);
 		Friend.allFriends.add(new Friend(e.getPlayer()));
 		ArrayList<Object[]> list = Databases.fetchFriends(e.getPlayer());
+		if(list == null){
+			return;
+		}
 		for(Player p : server.getAllPlayers()){
 			for(Object[] o : list){
-				if(o[1] == Databases.uuid_to_bytes(p)){
+				if(Arrays.equals((byte[]) o[1], Databases.uuid_to_bytes(p))){
 					p.sendMessage(text(e.getPlayer().getUsername()).append(translatable("crystalized.proxy.friends.joined")).color(YELLOW));
 				}
 			}
