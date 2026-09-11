@@ -100,7 +100,7 @@ public class Velocity_plugin {
 		CommandManager commandManager = server.getCommandManager();
 
 		CommandMeta commandMetahub = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
-		commandManager.register(commandMetahub, new HubCommand(server.getServer("lobby").get()));
+		commandManager.register(commandMetahub, createHubCommand(server));
 
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
 		ban_command = new BanCommand(server);
@@ -171,6 +171,25 @@ public class Velocity_plugin {
 				)
 				.build();
 		return new BrigadierCommand(sendNode);
+	}
+
+	private BrigadierCommand createHubCommand(ProxyServer proxy) {
+		LiteralCommandNode<CommandSource> hubNode = BrigadierCommand.literalArgumentBuilder("hub")
+				.executes(ctx -> {
+					if (ctx.getSource() instanceof Player p) {
+						Optional<RegisteredServer> lobby = proxy.getServer("lobby");
+						if (lobby.isEmpty()) {
+							p.sendMessage(text("Lobby server not found.").color(RED));
+							return Command.SINGLE_SUCCESS;
+						}
+						p.createConnectionRequest(lobby.get()).connect();
+					} else {
+						ctx.getSource().sendMessage(text("Only players can use this command.").color(RED));
+					}
+					return Command.SINGLE_SUCCESS;
+				})
+				.build();
+		return new BrigadierCommand(hubNode);
 	}
 
 	@Subscribe
@@ -338,24 +357,6 @@ public class Velocity_plugin {
 		} else {
 			return false;
 		}
-	}
-}
-
-class HubCommand implements SimpleCommand {
-	private RegisteredServer lobby;
-
-	public HubCommand(RegisteredServer lobby) {
-		this.lobby = lobby;
-	}
-
-	@Override
-	public void execute(Invocation invocation) {
-		((Player) invocation.source()).createConnectionRequest(lobby).connect();
-	}
-
-	@Override
-	public boolean hasPermission(Invocation invocation) {
-		return true;
 	}
 }
 
