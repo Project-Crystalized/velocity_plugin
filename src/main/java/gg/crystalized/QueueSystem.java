@@ -229,11 +229,11 @@ class GameQueue{
     public void sendAllPlayersToServer(QueueSystem.queueTypes type) {
         List<GameServer> templist = new ArrayList<>(servers);
         Collections.shuffle(templist);
-        List<Player> playerList = new ArrayList<>(players); //copying here to prevent a ConcurrentModificationException
-        players.clear();
 
         for (GameServer s : templist) {
             if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
+                List<Player> playerList = new ArrayList<>(players); //copying here to prevent a ConcurrentModificationException
+                players.clear();
                 s.playersInGame = playerList;
                 CompletableFuture<ConnectionRequestBuilder.Result> future = null;
                 for (Player p : playerList) {
@@ -246,7 +246,7 @@ class GameQueue{
             }
         }
 
-        for (Player p : playerList) {
+        for (Player p : players) {
             p.sendMessage(translatable("crystalized.generic.queue.unavailable").color(NamedTextColor.RED).append(name).append(translatable("crystalized.generic.queue.try_again").color(NamedTextColor.RED)));
         }
     }
@@ -336,8 +336,10 @@ class QueueCommand{
         LiteralCommandNode<CommandSource> commandNode = BrigadierCommand.literalArgumentBuilder("unqueue").executes(ctx -> {
                     if (ctx.getSource() instanceof Player p) {
                         QueueSystem.removeFromAllQueues((Player) ctx.getSource());
-                        RegisteredServer lobby = proxy.getServer("lobby").get();
-                        p.createConnectionRequest(lobby).connect();
+                        proxy.getServer("lobby").ifPresentOrElse(
+                            lobby -> p.createConnectionRequest(lobby).connect(),
+                            () -> p.sendMessage(text("[QueueSystem] Lobby server not found.", NamedTextColor.RED))
+                        );
                     }
                     return Command.SINGLE_SUCCESS;
                 }).build();
