@@ -131,7 +131,6 @@ class GameQueue{
     int max;
 
     public GameQueue(ProxyServer proxyServer, Velocity_plugin plugin, QueueSystem.queueTypes type, int playersNeededToStart, int playersMaxLimit,  Component visualName) {
-        players.clear();
         this.type = type;
         this.proxyServer = proxyServer;
         this.plugin = plugin;
@@ -175,6 +174,7 @@ class GameQueue{
                 }
                 if (timer.get().get() == 0) {
                     sendAllPlayersToServer(type);
+                    queueTimerStarted = false;
                     timer.set(new AtomicInteger(15));
                 }
             } else {
@@ -422,6 +422,6 @@ class QueueStatusCommand implements SimpleCommand {
 	}
 
 	private boolean isServerInGameQue(RegisteredServer rs) {
-		return QueueSystem.queues.stream().anyMatch(q -> q.servers.stream().anyMatch(gs -> gs.server == rs));
+		return QueueSystem.queues.stream().anyMatch(q -> q.servers.stream().anyMatch(gs -> gs.server.equals(rs)));
 	}
 }
