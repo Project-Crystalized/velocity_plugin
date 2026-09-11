@@ -254,6 +254,9 @@ class GameQueue{
     public void sendAdditionalMessage(GameServer s, QueueSystem.queueTypes type, CompletableFuture<ConnectionRequestBuilder.Result> future){
         if(future == null) return;
         future.whenComplete((result, error) -> {
+            if (error != null || result == null || !result.isSuccessful()) {
+                return;
+            }
             ByteArrayDataOutput out = ByteStreams.newDataOutput();
             if(type != QueueSystem.queueTypes.litestrike && type != QueueSystem.queueTypes.litestrike_ranked){
                 return;
