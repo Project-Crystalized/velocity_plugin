@@ -111,7 +111,7 @@ public class Velocity_plugin {
 		commandManager.register(commandMetaunban, unban_command);
 
 		CommandMeta commandMetaBroadcast = commandManager.metaBuilder("broadcast").plugin(this).build();
-		commandManager.register(commandMetaBroadcast, new BroadCastCommand(server));
+		commandManager.register(commandMetaBroadcast, createBroadcastCommand(server));
 
 		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
 		commandManager.register(commandMetaMsg, createMsgCommand(server));
@@ -230,6 +230,27 @@ public class Velocity_plugin {
 				)
 				.build();
 		return new BrigadierCommand(msgNode);
+	}
+
+	private BrigadierCommand createBroadcastCommand(ProxyServer proxy) {
+		LiteralCommandNode<CommandSource> broadcastNode = BrigadierCommand.literalArgumentBuilder("broadcast")
+				.requires(source -> !(source instanceof Player) || is_admin((Player) source))
+				.executes(ctx -> {
+					ctx.getSource().sendMessage(text("Usage: /broadcast <message>").color(RED));
+					return Command.SINGLE_SUCCESS;
+				})
+				.then(BrigadierCommand.requiredArgumentBuilder("message", StringArgumentType.greedyString())
+						.executes(ctx -> {
+							String rawMessage = ctx.getArgument("message", String.class);
+							Component message = translatable("crystalized.generic.broadcast").color(YELLOW);
+							message = message.append(text(rawMessage));
+							message = message.append(text("\n"));
+							Audience.audience(proxy.getAllPlayers()).sendMessage(message);
+							return Command.SINGLE_SUCCESS;
+						})
+				)
+				.build();
+		return new BrigadierCommand(broadcastNode);
 	}
 
 	@Subscribe
@@ -397,31 +418,6 @@ public class Velocity_plugin {
 		} else {
 			return false;
 		}
-	}
-}
-
-class BroadCastCommand implements RawCommand {
-	private ProxyServer server;
-
-	public BroadCastCommand(ProxyServer server) {
-		this.server = server;
-	}
-
-	@Override
-	public void execute(final Invocation invocation) {
-		Component message = translatable("crystalized.generic.broadcast").color(YELLOW);
-		message = message.append(text(invocation.arguments()));
-		message.append(text("\n"));
-		Audience.audience(server.getAllPlayers()).sendMessage(message);
-	}
-
-	@Override
-	public boolean hasPermission(final Invocation invocation) {
-		if (invocation.source() instanceof ConsoleCommandSource) {
-			return true;
-		}
-		Player p = (Player) invocation.source();
-		return Velocity_plugin.is_admin(p);
 	}
 }
 
