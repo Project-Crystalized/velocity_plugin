@@ -4,6 +4,9 @@ import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.google.inject.Inject;
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.*;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.command.CommandExecuteEvent;
@@ -122,8 +125,52 @@ public class Velocity_plugin {
 		CommandMeta commandMetaKey = commandManager.metaBuilder("key").plugin(this).build();
 		commandManager.register(commandMetaKey, new KeyCommand());
 
+		CommandMeta commandMetaSend = commandManager.metaBuilder("send").plugin(this).build();
+		commandManager.register(commandMetaSend, createSendCommand(server));
+
         queueSystem = new QueueSystem(server, this); //new version
         server.getEventManager().register(this, queueSystem);
+	}
+
+	private BrigadierCommand createSendCommand(ProxyServer proxy) {
+		LiteralCommandNode<CommandSource> sendNode = BrigadierCommand.literalArgumentBuilder("send")
+				.requires(source -> !(source instanceof Player) || is_admin((Player) source))
+				.executes(ctx -> {
+					ctx.getSource().sendMessage(text("Usage: /send <player> <server>").color(RED));
+					return Command.SINGLE_SUCCESS;
+				})
+				.then(BrigadierCommand.requiredArgumentBuilder("player", StringArgumentType.word())
+						.suggests((ctx, builder) -> {
+							proxy.getAllPlayers().forEach(p -> builder.suggest(p.getUsername()));
+							return builder.buildFuture();
+						})
+						.then(BrigadierCommand.requiredArgumentBuilder("server", StringArgumentType.word())
+								.suggests((ctx, builder) -> {
+									proxy.getAllServers().forEach(s -> builder.suggest(s.getServerInfo().getName()));
+									return builder.buildFuture();
+								})
+								.executes(ctx -> {
+									String playerName = ctx.getArgument("player", String.class);
+									String serverName = ctx.getArgument("server", String.class);
+									CommandSource source = ctx.getSource();
+									Optional<Player> target = proxy.getPlayer(playerName);
+									if (target.isEmpty()) {
+										source.sendMessage(text("Player not found: " + playerName).color(RED));
+										return Command.SINGLE_SUCCESS;
+									}
+									Optional<RegisteredServer> destination = proxy.getServer(serverName);
+									if (destination.isEmpty()) {
+										source.sendMessage(text("Server not found: " + serverName).color(RED));
+										return Command.SINGLE_SUCCESS;
+									}
+									target.get().createConnectionRequest(destination.get()).connect();
+									source.sendMessage(text("Sent " + target.get().getUsername() + " to " + destination.get().getServerInfo().getName()).color(NamedTextColor.GREEN));
+									return Command.SINGLE_SUCCESS;
+								})
+						)
+				)
+				.build();
+		return new BrigadierCommand(sendNode);
 	}
 
 	@Subscribe
