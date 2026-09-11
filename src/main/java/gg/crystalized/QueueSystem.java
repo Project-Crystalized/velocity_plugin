@@ -24,8 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.translatable;
@@ -126,6 +124,7 @@ class GameQueue{
     ProxyServer proxyServer;
     public QueueSystem.queueTypes type;
     boolean queueTimerStarted = false;
+    int timer = 15;
     public Component name;
     int needed;
     int max;
@@ -144,41 +143,32 @@ class GameQueue{
         }
         Velocity_plugin.logger.info("[QueueSystem] Registered \"" + type + "\" queue with " + servers.size() + " server(s).");
 
-        AtomicReference<AtomicInteger> timer = new AtomicReference<>(new AtomicInteger(15)); //werid shit
         proxyServer.getScheduler().buildTask(plugin, () -> {
             for (GameServer s : servers) {
                 s.updateServerStatus();
             }
 
             //Queue timer
-            if ((players.size() == needed || players.size() > needed) && !queueTimerStarted) {
+            if (players.size() >= needed && !queueTimerStarted) {
                 queueTimerStarted = true;
-                timer.set(new AtomicInteger(15));
-            } else if ((players.size() < needed) && queueTimerStarted) {
+                timer = 15;
+            } else if (players.size() < needed && queueTimerStarted) {
                 queueTimerStarted = false;
                 for (Player p : players) {
                     p.sendMessage(translatable("crystalized.generic.queue.cancelled"));
                 }
             } else if (queueTimerStarted) {
-                //timer.getAndDecrement();
-                timer.set(new AtomicInteger(timer.get().get() - 1));
-                switch (timer.get().get()) {
-                    case 3,2,1 -> {
-                        for (Player p : players) {
-                            //TODO I would play a sound here but velocity doesn't support playing sounds for some reason - Callum
-                        }
-                    }
-                }
+                timer--;
                 for (Player p : players) {
-                    p.sendActionBar(translatable("crystalized.generic.queue.for").append(name).append(text(" (" + players.size() + "/" + needed + "), ").append(translatable("crystalized.generic.queue.teleporting")).append(text(timer.toString()))));
+                    p.sendActionBar(translatable("crystalized.generic.queue.for").append(name).append(text(" (" + players.size() + "/" + needed + "), ").append(translatable("crystalized.generic.queue.teleporting")).append(text(timer))));
                 }
-                if (timer.get().get() == 0) {
+                if (timer == 0) {
                     sendAllPlayersToServer(type);
                     queueTimerStarted = false;
-                    timer.set(new AtomicInteger(15));
+                    timer = 15;
                 }
             } else {
-                timer.set(new AtomicInteger(15));
+                timer = 15;
                 for (Player p : players) {
                     List<Component> translatableList = new ArrayList<>();
                     translatableList.add(name);
