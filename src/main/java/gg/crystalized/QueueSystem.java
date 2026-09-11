@@ -136,8 +136,12 @@ class GameQueue{
         this.needed = playersNeededToStart;
         this.max = playersMaxLimit;
         this.name = visualName;
+        String pool = type.toString();
+        if (type == QueueSystem.queueTypes.litestrike_ranked) {
+            pool = "litestrike"; //ranked shares the litestrike server pool
+        }
         for (RegisteredServer rs : proxyServer.getAllServers()) {
-            if (rs.getServerInfo().getName().startsWith(getSuperType(type).toString())) {
+            if (rs.getServerInfo().getName().startsWith(pool)) {
                 servers.add(new GameServer(rs, type));
             }
         }
@@ -180,16 +184,6 @@ class GameQueue{
 
 
         }).repeat(1, TimeUnit.SECONDS).schedule();
-    }
-
-    public QueueSystem.queueTypes getSuperType(QueueSystem.queueTypes type){
-        //because litestrike and litestrike_ranked use the same servers this is e.g. if type = litestrike_ranked to find the type litestrike and use that instead
-        QueueSystem.queueTypes result = type;
-        for(QueueSystem.queueTypes t : QueueSystem.queueTypes.values()){
-            if(t == type) continue;
-            if(type.toString().startsWith(t.toString())) result = t;
-        }
-        return result;
     }
 
     public void addPlayerToQueue(Player p) {
