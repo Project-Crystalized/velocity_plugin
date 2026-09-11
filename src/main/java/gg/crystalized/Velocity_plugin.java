@@ -114,7 +114,7 @@ public class Velocity_plugin {
 		commandManager.register(commandMetaBroadcast, new BroadCastCommand(server));
 
 		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
-		commandManager.register(commandMetaMsg, new MsgCommand(server));
+		commandManager.register(commandMetaMsg, createMsgCommand(server));
 
 		CommandMeta commandMetaSetRanked = commandManager.metaBuilder("ls_set_ranked").plugin(this).build();
 		commandManager.register(commandMetaSetRanked, new SetRankedCommand(server));
@@ -190,6 +190,46 @@ public class Velocity_plugin {
 				})
 				.build();
 		return new BrigadierCommand(hubNode);
+	}
+
+	private BrigadierCommand createMsgCommand(ProxyServer proxy) {
+		LiteralCommandNode<CommandSource> msgNode = BrigadierCommand.literalArgumentBuilder("msg")
+				.executes(ctx -> {
+					ctx.getSource().sendMessage(text("Usage: /msg <player> <message>").color(RED));
+					return Command.SINGLE_SUCCESS;
+				})
+				.then(BrigadierCommand.requiredArgumentBuilder("player", StringArgumentType.word())
+						.suggests((ctx, builder) -> {
+							proxy.getAllPlayers().forEach(p -> builder.suggest(p.getUsername()));
+							return builder.buildFuture();
+						})
+						.then(BrigadierCommand.requiredArgumentBuilder("message", StringArgumentType.greedyString())
+								.executes(ctx -> {
+									String targetName = ctx.getArgument("player", String.class);
+									String rawMessage = ctx.getArgument("message", String.class);
+									CommandSource source = ctx.getSource();
+									Player target = proxy.getPlayer(targetName).orElse(null);
+									if (target == null) {
+										source.sendMessage(translatable("crystalized.proxy.msg.not_found").color(RED));
+										return Command.SINGLE_SUCCESS;
+									}
+									String messengerName = "Console";
+									if (source instanceof Player sender) {
+										messengerName = sender.getUsername();
+										if (!Settings.isAllowed("dms", target, sender)) {
+											source.sendMessage(translatable("crystalized.proxy.msg.not_allowed", List.of(Component.text(target.getUsername()))).color(RED));
+											return Command.SINGLE_SUCCESS;
+										}
+									}
+									Component message = text(" " + rawMessage);
+									source.sendMessage(text("[").append(translatable("crystalized.generic.you")).append(text(" -> " + target.getUsername() + "] ")).append(message).color(NamedTextColor.AQUA));
+									target.sendMessage(text("[" + messengerName + " -> ").append(translatable("crystalized.generic.you")).append(text("] ")).append(message).color(NamedTextColor.AQUA));
+									return Command.SINGLE_SUCCESS;
+								})
+						)
+				)
+				.build();
+		return new BrigadierCommand(msgNode);
 	}
 
 	@Subscribe
@@ -358,63 +398,6 @@ public class Velocity_plugin {
 			return false;
 		}
 	}
-}
-
-class MsgCommand implements SimpleCommand {
-	private ProxyServer server;
-
-	public MsgCommand(ProxyServer server) {
-		this.server = server;
-	}
-
-	@Override
-	public void execute(final Invocation invocation) {
-		if (invocation.arguments().length == 0) {
-			return;
-		}
-		String messenger_name = "Console";
-		if (invocation.source() instanceof Player) {
-			messenger_name = ((Player) invocation.source()).getUsername();
-		}
-		Player p = server.getPlayer(invocation.arguments()[0]).orElse(null);
-		if (p == null) {
-			invocation.source().sendMessage(translatable("crystalized.proxy.msg.not_found").color(RED));
-			return;
-		}
-
-		if(!Settings.isAllowed("dms", p, (Player)invocation.source())){
-			invocation.source().sendMessage(translatable("crystalized.proxy.msg.not_allowed", List.of(Component.text(p.getUsername()))).color(RED));
-			return;
-		}
-
-		Component message = text("");
-		for (String arg : invocation.arguments()) {
-			if (arg == invocation.arguments()[0])
-				continue;
-			message = message.append(text(" " + arg));
-		}
-		invocation.source()
-				.sendMessage(text("[").append(translatable("crystalized.generic.you")).append(text(" -> " + p.getUsername() + "] ")).append(message).color(NamedTextColor.AQUA));
-		p.sendMessage(text("[" + messenger_name + " -> ").append(translatable("crystalized.generic.you")).append(text("] ")).append(message).color(NamedTextColor.AQUA));
-	}
-
-	@Override
-	public List<String> suggest(Invocation invocation) {
-		if (invocation.arguments().length == 0) {
-			return server.getAllPlayers().stream().map(player -> player.getUsername()).collect(Collectors.toList());
-		}
-		if (invocation.arguments().length == 1) {
-			return server.getAllPlayers().stream().map(player -> player.getUsername())
-					.filter(name -> name.startsWith(invocation.arguments()[0])).collect(Collectors.toList());
-		}
-		return List.of();
-	}
-
-	@Override
-	public boolean hasPermission(final Invocation invocation) {
-		return true;
-	}
-
 }
 
 class BroadCastCommand implements RawCommand {
