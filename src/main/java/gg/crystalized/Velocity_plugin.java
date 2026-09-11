@@ -252,8 +252,10 @@ public class Velocity_plugin {
 		} else if (message2.contains("crystalblitz")) {
 			QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
-			RegisteredServer lobby = server.getServer("lobby").get();
-			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
+			server.getServer("lobby").ifPresentOrElse(
+				lobby -> backend_conn.getPlayer().createConnectionRequest(lobby).connect(),
+				() -> backend_conn.getPlayer().sendMessage(text("[QueueSystem] Lobby server not found.", NamedTextColor.RED))
+			);
 			if(connect){
 				QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			}
