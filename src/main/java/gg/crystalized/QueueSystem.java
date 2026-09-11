@@ -169,9 +169,6 @@ class GameQueue{
                             //TODO I would play a sound here but velocity doesn't support playing sounds for some reason - Callum
                         }
                     }
-                    case 0 -> {
-                        sendAllPlayersToServer(type);
-                    }
                 }
                 for (Player p : players) {
                     p.sendActionBar(translatable("crystalized.generic.queue.for").append(name).append(text(" (" + players.size() + "/" + needed + "), ").append(translatable("crystalized.generic.queue.teleporting")).append(text(timer.toString()))));
