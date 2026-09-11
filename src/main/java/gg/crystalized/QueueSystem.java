@@ -271,7 +271,7 @@ class GameQueue{
 class GameServer{
     RegisteredServer server;
     QueueSystem.queueTypes type;
-    QueueSystem.ServerStatus available;
+    QueueSystem.ServerStatus available = QueueSystem.ServerStatus.OFFLINE;
     boolean isGoing = false;
     public List<Player> playersInGame = new ArrayList<>(); //for rejoining
 
@@ -283,9 +283,13 @@ class GameServer{
 
     public void updateServerStatus() {
         QueueSystem.ServerStatus status = available;
-        try {
-            server.ping().get(3, TimeUnit.SECONDS); //to check if its online, otherwise exception is thrown (?)
-            if (server.getPlayersConnected().isEmpty() && isGoing) {
+        server.ping().orTimeout(3, TimeUnit.SECONDS).whenComplete((ping, error) -> {
+            if (error != null) {
+                available = QueueSystem.ServerStatus.OFFLINE;
+								if (!error.getMessage().contains("Connection refused")) {
+									Velocity_plugin.logger.warn("got unknown error when pinging backend: " + error.toString());
+								}
+            } else if (server.getPlayersConnected().isEmpty() && isGoing) {
                 available = QueueSystem.ServerStatus.ONLINE_AVAILABLE;
                 isGoing = false;
                 playersInGame.clear();
@@ -294,12 +298,10 @@ class GameServer{
             } else {
                 available = QueueSystem.ServerStatus.ONLINE_AVAILABLE;
             }
-        } catch (Exception e) {
-            available = QueueSystem.ServerStatus.OFFLINE;
-        }
-        if (status != available && status != null) { //last check for plugin startup
-            Velocity_plugin.logger.info("[QueueSystem] " + server.getServerInfo().getName() + " has changed availability from " + status + " to " + available);
-        }
+            if (status != available) {
+                Velocity_plugin.logger.info("[QueueSystem] " + server.getServerInfo().getName() + " has changed availability from " + status + " to " + available);
+            }
+        });
     }
 }
 
