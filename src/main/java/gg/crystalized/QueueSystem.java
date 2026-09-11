@@ -10,6 +10,7 @@ import com.velocitypowered.api.command.*;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.ConnectionRequestBuilder;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -34,12 +35,12 @@ public class QueueSystem {
     public ProxyServer server;
     public static List<GameQueue> queues = new ArrayList<>();
 
-    public enum ServerStatus{
-        online_free,
-        online_playing,
-        offline,
+    protected enum ServerStatus{
+        ONLINE_AVAILABLE,
+        ONLINE_INGAME,
+        OFFLINE,
     }
-    public enum queueTypes{
+    protected enum queueTypes{
         litestrike,
         litestrike_ranked,
         knockoff,
@@ -67,6 +68,9 @@ public class QueueSystem {
 
         CommandMeta commandMetaRejoin = commandManager.metaBuilder("rejoin").plugin(plugin).build();
         commandManager.register(commandMetaRejoin, QueueCommand.createRejoinCommand(server));
+
+        CommandMeta commandMetaQueueStatus = commandManager.metaBuilder("queuestatus").plugin(plugin).build();
+        commandManager.register(commandMetaQueueStatus, new QueueStatusCommand(server));
 
     }
 
@@ -206,7 +210,7 @@ class GameQueue{
             p.sendMessage(translatable("crystalized.generic.queue.full", List.of(name)));
         } else {
             for (GameServer s : servers) {
-                if (s.available.equals(QueueSystem.ServerStatus.online_free)) {
+                if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
                     players.add(p);
                     p.sendMessage(translatable("crystalized.generic.queue.queued_for").append(name));
                     return;
@@ -232,7 +236,7 @@ class GameQueue{
         players.clear();
 
         for (GameServer s : templist) {
-            if (s.available.equals(QueueSystem.ServerStatus.online_free)) {
+            if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
                 s.playersInGame = playerList;
                 CompletableFuture<ConnectionRequestBuilder.Result> future = null;
                 for (Player p : playerList) {
@@ -284,16 +288,16 @@ class GameServer{
         try {
             server.ping().get(3, TimeUnit.SECONDS); //to check if its online, otherwise exception is thrown (?)
             if (server.getPlayersConnected().isEmpty() && isGoing) {
-                available = QueueSystem.ServerStatus.online_free;
+                available = QueueSystem.ServerStatus.ONLINE_AVAILABLE;
                 isGoing = false;
                 playersInGame.clear();
             } else if (isGoing) {
-                available = QueueSystem.ServerStatus.online_playing;
+                available = QueueSystem.ServerStatus.ONLINE_INGAME;
             } else {
-                available = QueueSystem.ServerStatus.online_free;
+                available = QueueSystem.ServerStatus.ONLINE_AVAILABLE;
             }
         } catch (Exception e) {
-            available = QueueSystem.ServerStatus.offline;
+            available = QueueSystem.ServerStatus.OFFLINE;
         }
         if (status != available && status != null) { //last check for plugin startup
             Velocity_plugin.logger.info("[QueueSystem] " + server.getServerInfo().getName() + " has changed availability from " + status + " to " + available);
@@ -365,4 +369,57 @@ class QueueCommand{
 
         return new BrigadierCommand(commandNode);
     }
+}
+
+class QueueStatusCommand implements SimpleCommand {
+	private final ProxyServer server;
+
+	public QueueStatusCommand(ProxyServer server) {
+		this.server = server;
+	}
+
+	@Override
+	public boolean hasPermission(Invocation invocation) {
+		if (invocation.source() instanceof ConsoleCommandSource) {
+			return true;
+		}
+		return invocation.source() instanceof Player p && Velocity_plugin.is_admin(p);
+	}
+
+	@Override
+	public void execute(Invocation invocation) {
+		CommandSource source = invocation.source();
+		source.sendMessage(text("Queue system status:").color(NamedTextColor.AQUA));
+
+		for (GameQueue q : QueueSystem.queues) {
+			source.sendMessage(text("  ").append(q.name)
+					.append(text(" (" + q.type + ") - " + q.players.size() + " queued (needed " + q.needed + " / max " + q.max + ")")));
+			for (GameServer s : q.servers) {
+				NamedTextColor color = NamedTextColor.RED;
+				String status = s.available.toString();
+				if (s.available == QueueSystem.ServerStatus.ONLINE_AVAILABLE) {
+					color = NamedTextColor.GREEN;
+				} else if (s.available == QueueSystem.ServerStatus.ONLINE_INGAME) {
+					color = NamedTextColor.GOLD;
+					status += " (" + s.server.getPlayersConnected().size() + " players)";
+				}
+				source.sendMessage(text("    ").append(text(s.server.getServerInfo().getName(), NamedTextColor.WHITE))
+						.append(text(": ", NamedTextColor.WHITE)).append(text(status, color)));
+			}
+		}
+
+		source.sendMessage(text("  Other servers:").color(NamedTextColor.AQUA));
+		for (RegisteredServer rs : server.getAllServers()) {
+			if (isServerInGameQue(rs)) {
+				continue;
+			}
+			source.sendMessage(text("    ").append(text(rs.getServerInfo().getName(), NamedTextColor.WHITE))
+					.append(text(": " + rs.getPlayersConnected().size() + " players")));
+		}
+		source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
+	}
+
+	private boolean isServerInGameQue(RegisteredServer rs) {
+		return QueueSystem.queues.stream().anyMatch(q -> q.servers.stream().anyMatch(gs -> gs.server == rs));
+	}
 }
