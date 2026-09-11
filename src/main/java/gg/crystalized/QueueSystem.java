@@ -256,17 +256,18 @@ class GameQueue{
 
     public void sendAdditionalMessage(GameServer s, QueueSystem.queueTypes type, CompletableFuture<ConnectionRequestBuilder.Result> future){
         if(future == null) return;
-        while(!future.isDone()){}
-        ByteArrayDataOutput out = ByteStreams.newDataOutput();
-        if(type != QueueSystem.queueTypes.litestrike && type != QueueSystem.queueTypes.litestrike_ranked){
-            return;
-        }
-        if(type == QueueSystem.queueTypes.litestrike) {
-            out.writeUTF("ranked_off");
-        }else if(type == QueueSystem.queueTypes.litestrike_ranked){
-            out.writeUTF("ranked_on");
-        }
-        s.server.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+        future.whenComplete((result, error) -> {
+            ByteArrayDataOutput out = ByteStreams.newDataOutput();
+            if(type != QueueSystem.queueTypes.litestrike && type != QueueSystem.queueTypes.litestrike_ranked){
+                return;
+            }
+            if(type == QueueSystem.queueTypes.litestrike) {
+                out.writeUTF("ranked_off");
+            }else if(type == QueueSystem.queueTypes.litestrike_ranked){
+                out.writeUTF("ranked_on");
+            }
+            s.server.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+        });
     }
 }
 
