@@ -378,6 +378,7 @@ class QueueStatusCommand implements SimpleCommand {
 	@Override
 	public void execute(Invocation invocation) {
 		CommandSource source = invocation.source();
+		source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
 		source.sendMessage(text("Queue system status:").color(NamedTextColor.AQUA));
 
 		for (GameQueue q : QueueSystem.queues) {
