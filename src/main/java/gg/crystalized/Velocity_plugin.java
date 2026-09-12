@@ -123,6 +123,9 @@ public class Velocity_plugin {
 		CommandMeta commandMetaSend = commandManager.metaBuilder("send").plugin(this).build();
 		commandManager.register(commandMetaSend, AdminCommands.createSendCommand(server));
 
+		CommandMeta commandMetaPlayerinfo = commandManager.metaBuilder("playerinfo").plugin(this).build();
+		commandManager.register(commandMetaPlayerinfo, AdminCommands.createPlayerinfoCommand(server, this));
+
         queueSystem = new QueueSystem(server, this); //new version
         server.getEventManager().register(this, queueSystem);
 	}
