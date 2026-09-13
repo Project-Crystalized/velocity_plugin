@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static net.kyori.adventure.text.Component.text;
@@ -121,7 +122,7 @@ public class QueueSystem {
 }
 
 class GameQueue{
-    List<Player> players = new ArrayList<>();
+    List<Player> players = new CopyOnWriteArrayList<>();
     List<GameServer> servers = new ArrayList<>();
     private Velocity_plugin plugin;
     ProxyServer proxyServer;
@@ -217,21 +218,23 @@ class GameQueue{
         List<GameServer> templist = new ArrayList<>(servers);
         Collections.shuffle(templist);
 
-        for (GameServer s : templist) {
-            if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
-                List<Player> playerList = new ArrayList<>(players); //copying here to prevent a ConcurrentModificationException
-                players.clear();
-                CompletableFuture<ConnectionRequestBuilder.Result> future = null;
-                for (Player p : playerList) {
-                    if(future == null) future = p.createConnectionRequest(s.server).connect();
-                    else p.createConnectionRequest(s.server).connect();
-                }
-                CompletableFuture<ConnectionRequestBuilder.Result> finalFuture = future;
-                sendAdditionalMessage(s, type, finalFuture);
-                return;
+        for (GameServer target : templist) {
+            if (!target.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
+                continue;
             }
+            List<Player> sent = new ArrayList<>();
+            CompletableFuture<ConnectionRequestBuilder.Result> future = null;
+            for (Player p : players) {
+                if (future == null) future = p.createConnectionRequest(target.server).connect();
+                else p.createConnectionRequest(target.server).connect();
+                sent.add(p);
+            }
+            players.removeAll(sent);
+            sendAdditionalMessage(target, type, future);
+            return;
         }
 
+        Velocity_plugin.logger.error("Queing failed no servers available");
         for (Player p : players) {
             p.sendMessage(translatable("crystalized.generic.queue.unavailable").color(NamedTextColor.RED).append(name).append(translatable("crystalized.generic.queue.try_again").color(NamedTextColor.RED)));
         }
@@ -267,7 +270,6 @@ class GameServer{
     public GameServer(RegisteredServer server, QueueSystem.queueTypes type) {
         this.type = type;
         this.server = server;
-
     }
 
     public void updateServerStatus() {
