@@ -22,6 +22,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -101,8 +102,10 @@ public class QueueSystem {
                 for (GameServer s : q.servers) {
                     if (s.server.equals(backend.getServer())) {
                         s.isGoing = true;
+                        s.playersInGame.clear();
                         for (Player p : s.server.getPlayersConnected()) {
                             QueueSystem.removeFromAllQueues(p);
+                            s.playersInGame.add(p.getUniqueId());
                         }
                     }
                 }
@@ -218,7 +221,6 @@ class GameQueue{
             if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
                 List<Player> playerList = new ArrayList<>(players); //copying here to prevent a ConcurrentModificationException
                 players.clear();
-                s.playersInGame = playerList;
                 CompletableFuture<ConnectionRequestBuilder.Result> future = null;
                 for (Player p : playerList) {
                     if(future == null) future = p.createConnectionRequest(s.server).connect();
@@ -260,7 +262,7 @@ class GameServer{
     QueueSystem.queueTypes type;
     QueueSystem.ServerStatus available = QueueSystem.ServerStatus.OFFLINE;
     boolean isGoing = false;
-    public List<Player> playersInGame = new ArrayList<>(); //for rejoining
+    public List<UUID> playersInGame = new ArrayList<>(); // for rejoining
 
     public GameServer(RegisteredServer server, QueueSystem.queueTypes type) {
         this.type = type;
@@ -297,12 +299,12 @@ class QueueCommand{
     public static BrigadierCommand createBrigadierCommand(final ProxyServer proxy) {
         LiteralCommandNode<CommandSource> commandNode = BrigadierCommand.literalArgumentBuilder("queue")
                 .then(BrigadierCommand.literalArgumentBuilder("enter")
-                        .then(BrigadierCommand.requiredArgumentBuilder("argument", StringArgumentType.word())
+                        .then(BrigadierCommand.requiredArgumentBuilder("queue_type", StringArgumentType.word())
                                 .suggests((ctx, builder) -> {
                                     QueueSystem.queues.forEach(GameQueue -> builder.suggest(GameQueue.type.toString()));
                                     return builder.buildFuture();
                                 }).executes(ctx -> {
-                                    String argumentProvided = ctx.getArgument("argument", String.class);
+                                    String argumentProvided = ctx.getArgument("queue_type", String.class);
                                     try {
                                         QueueSystem.removeFromAllQueues((Player) ctx.getSource());
                                         GameQueue q = QueueSystem.getQueue(QueueSystem.queueTypes.valueOf(argumentProvided));
@@ -339,7 +341,7 @@ class QueueCommand{
             if (ctx.getSource() instanceof Player p) {
                 for (GameQueue gq : QueueSystem.queues) {
                     for (GameServer gs : gq.servers) {
-                        if (gs.playersInGame.contains(p)) {
+                        if (gs.playersInGame.contains(p.getUniqueId())) {
                             if (gs.type.equals(QueueSystem.queueTypes.litestrike) || gs.type.equals(QueueSystem.queueTypes.litestrike_ranked)) {
                                 p.sendMessage(translatable("crystalized.generic.queue.rejoin"));
                                 p.createConnectionRequest(gs.server).connect();

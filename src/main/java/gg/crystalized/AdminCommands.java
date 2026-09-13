@@ -288,7 +288,7 @@ public class AdminCommands {
 		}
 		for (GameQueue q : QueueSystem.queues) {
 			for (GameServer gs : q.servers) {
-				if (gs.playersInGame.contains(online)) {
+				if (gs.playersInGame.contains(online.getUniqueId())) {
 					return "in game on " + gs.server.getServerInfo().getName();
 				}
 			}
