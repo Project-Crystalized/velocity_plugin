@@ -155,6 +155,13 @@ public class Velocity_plugin {
 		if(s.isEmpty()) return;
 		e.getPlayer().createConnectionRequest(s.get()).connect();
 		newPlayers.remove(e.getPlayer().getUniqueId());
+		server.getScheduler().buildTask(this, () -> {
+			Optional<ServerConnection> opt = e.getPlayer().getCurrentServer();
+			if(opt.isEmpty()) return;
+			if(opt.get().getServer().getServerInfo().getName().contains("limbo")) {
+				e.getPlayer().disconnect(Component.translatable("You have been connected to limbo for too long.").color(RED));
+			}
+		}).delay(5, TimeUnit.MINUTES);
 	}
 
 	@Subscribe
