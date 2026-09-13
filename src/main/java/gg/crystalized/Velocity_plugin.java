@@ -32,10 +32,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 
 import net.kyori.adventure.text.format.NamedTextColor;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -275,7 +272,28 @@ public class Velocity_plugin {
 		}
 	}
 
+	public static boolean is_mod(Player p) {
+		HashMap<String, Object> playerData = Databases.fetchPlayerData(p);
+		if(playerData.get("rank_id") != null && ((Integer)playerData.get("rank_id") == 1 || (Integer)playerData.get("rank_id") == 2)){
+			return true;
+		}
+		if (p.getUsername().equals("cooltexture")
+				|| p.getUsername().equals("Callum_Is_Bad")
+				|| p.getUsername().equals(".CallumIsBad6502")
+				|| p.getUsername().equals("LadyCat_")
+				|| p.getUsername().equals("___mira___")
+				|| p.getUsername().equals("Delieve")) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	public static boolean is_admin(Player p) {
+		HashMap<String, Object> playerData = Databases.fetchPlayerData(p);
+		if(playerData.get("rank_id") != null && ((Integer)playerData.get("rank_id") == 1)){
+			return true;
+		}
 		if (p.getUsername().equals("cooltexture")
 				|| p.getUsername().equals("Callum_Is_Bad")
 				|| p.getUsername().equals(".CallumIsBad6502")

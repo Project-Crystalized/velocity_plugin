@@ -116,7 +116,7 @@ public class BanCommand implements SimpleCommand {
 			return true;
 		}
 		Player p = (Player) invocation.source();
-		return Velocity_plugin.is_admin(p);
+		return Velocity_plugin.is_mod(p);
 	}
 
 	@Override
@@ -277,6 +277,6 @@ class UnbanCommand implements SimpleCommand{
 			return true;
 		}
 		Player p = (Player) invocation.source();
-		return Velocity_plugin.is_admin(p);
+		return Velocity_plugin.is_mod(p);
 	}
 }
