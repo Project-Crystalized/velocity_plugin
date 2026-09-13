@@ -221,7 +221,7 @@ class PartyCommand implements SimpleCommand {
 			invocation.source().sendMessage(party.render());
 
 		} else if (args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add")) {
-			if(Settings.isReceiveAllowed("party_requests", mentioned_player, executer)){
+			if(!Settings.isReceiveAllowed("party_requests", mentioned_player, executer)){
 				executer.sendMessage(translatable("crystalized.proxy.party.invite.cannot", List.of(Component.text(mentioned_player.getUsername()))).color(RED));
 				return;
 			}

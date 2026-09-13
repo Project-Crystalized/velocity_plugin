@@ -10,6 +10,7 @@ import com.velocitypowered.api.command.*;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.ConnectionRequestBuilder;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -23,8 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.translatable;
@@ -34,12 +33,12 @@ public class QueueSystem {
     public ProxyServer server;
     public static List<GameQueue> queues = new ArrayList<>();
 
-    public enum ServerStatus{
-        online_free,
-        online_playing,
-        offline,
+    protected enum ServerStatus{
+        ONLINE_AVAILABLE,
+        ONLINE_INGAME,
+        OFFLINE,
     }
-    public enum queueTypes{
+    protected enum queueTypes{
         litestrike,
         litestrike_ranked,
         knockoff,
@@ -67,6 +66,9 @@ public class QueueSystem {
 
         CommandMeta commandMetaRejoin = commandManager.metaBuilder("rejoin").plugin(plugin).build();
         commandManager.register(commandMetaRejoin, QueueCommand.createRejoinCommand(server));
+
+        CommandMeta commandMetaQueueStatus = commandManager.metaBuilder("queuestatus").plugin(plugin).build();
+        commandManager.register(commandMetaQueueStatus, new QueueStatusCommand(server));
 
     }
 
@@ -122,62 +124,55 @@ class GameQueue{
     ProxyServer proxyServer;
     public QueueSystem.queueTypes type;
     boolean queueTimerStarted = false;
+    int timer = 15;
     public Component name;
     int needed;
     int max;
 
     public GameQueue(ProxyServer proxyServer, Velocity_plugin plugin, QueueSystem.queueTypes type, int playersNeededToStart, int playersMaxLimit,  Component visualName) {
-        players.clear();
         this.type = type;
         this.proxyServer = proxyServer;
         this.plugin = plugin;
         this.needed = playersNeededToStart;
         this.max = playersMaxLimit;
         this.name = visualName;
+        String pool = type.toString();
+        if (type == QueueSystem.queueTypes.litestrike_ranked) {
+            pool = "litestrike"; //ranked shares the litestrike server pool
+        }
         for (RegisteredServer rs : proxyServer.getAllServers()) {
-            if (rs.getServerInfo().getName().startsWith(getSuperType(type).toString())) {
+            if (rs.getServerInfo().getName().startsWith(pool)) {
                 servers.add(new GameServer(rs, type));
             }
         }
         Velocity_plugin.logger.info("[QueueSystem] Registered \"" + type + "\" queue with " + servers.size() + " server(s).");
 
-        AtomicReference<AtomicInteger> timer = new AtomicReference<>(new AtomicInteger(15)); //werid shit
         proxyServer.getScheduler().buildTask(plugin, () -> {
             for (GameServer s : servers) {
                 s.updateServerStatus();
             }
 
             //Queue timer
-            if ((players.size() == needed || players.size() > needed) && !queueTimerStarted) {
+            if (players.size() >= needed && !queueTimerStarted) {
                 queueTimerStarted = true;
-                timer.set(new AtomicInteger(15));
-            } else if ((players.size() < needed) && queueTimerStarted) {
+                timer = 15;
+            } else if (players.size() < needed && queueTimerStarted) {
                 queueTimerStarted = false;
                 for (Player p : players) {
                     p.sendMessage(translatable("crystalized.generic.queue.cancelled"));
                 }
             } else if (queueTimerStarted) {
-                //timer.getAndDecrement();
-                timer.set(new AtomicInteger(timer.get().get() - 1));
-                switch (timer.get().get()) {
-                    case 3,2,1 -> {
-                        for (Player p : players) {
-                            //TODO I would play a sound here but velocity doesn't support playing sounds for some reason - Callum
-                        }
-                    }
-                    case 0 -> {
-                        sendAllPlayersToServer(type);
-                    }
-                }
+                timer--;
                 for (Player p : players) {
-                    p.sendActionBar(translatable("crystalized.generic.queue.for").append(name).append(text(" (" + players.size() + "/" + needed + "), ").append(translatable("crystalized.generic.queue.teleporting")).append(text(timer.toString()))));
+                    p.sendActionBar(translatable("crystalized.generic.queue.for").append(name).append(text(" (" + players.size() + "/" + needed + "), ").append(translatable("crystalized.generic.queue.teleporting")).append(text(timer))));
                 }
-                if (timer.get().get() == 0) {
+                if (timer == 0) {
                     sendAllPlayersToServer(type);
-                    timer.set(new AtomicInteger(15));
+                    queueTimerStarted = false;
+                    timer = 15;
                 }
             } else {
-                timer.set(new AtomicInteger(15));
+                timer = 15;
                 for (Player p : players) {
                     List<Component> translatableList = new ArrayList<>();
                     translatableList.add(name);
@@ -191,22 +186,12 @@ class GameQueue{
         }).repeat(1, TimeUnit.SECONDS).schedule();
     }
 
-    public QueueSystem.queueTypes getSuperType(QueueSystem.queueTypes type){
-        //because litestrike and litestrike_ranked use the same servers this is e.g. if type = litestrike_ranked to find the type litestrike and use that instead
-        QueueSystem.queueTypes result = type;
-        for(QueueSystem.queueTypes t : QueueSystem.queueTypes.values()){
-            if(t == type) continue;
-            if(type.toString().startsWith(t.toString())) result = t;
-        }
-        return result;
-    }
-
     public void addPlayerToQueue(Player p) {
         if (players.size() == max) {
             p.sendMessage(translatable("crystalized.generic.queue.full", List.of(name)));
         } else {
             for (GameServer s : servers) {
-                if (s.available.equals(QueueSystem.ServerStatus.online_free)) {
+                if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
                     players.add(p);
                     p.sendMessage(translatable("crystalized.generic.queue.queued_for").append(name));
                     return;
@@ -228,11 +213,11 @@ class GameQueue{
     public void sendAllPlayersToServer(QueueSystem.queueTypes type) {
         List<GameServer> templist = new ArrayList<>(servers);
         Collections.shuffle(templist);
-        List<Player> playerList = new ArrayList<>(players); //copying here to prevent a ConcurrentModificationException
-        players.clear();
 
         for (GameServer s : templist) {
-            if (s.available.equals(QueueSystem.ServerStatus.online_free)) {
+            if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
+                List<Player> playerList = new ArrayList<>(players); //copying here to prevent a ConcurrentModificationException
+                players.clear();
                 s.playersInGame = playerList;
                 CompletableFuture<ConnectionRequestBuilder.Result> future = null;
                 for (Player p : playerList) {
@@ -245,31 +230,35 @@ class GameQueue{
             }
         }
 
-        for (Player p : playerList) {
+        for (Player p : players) {
             p.sendMessage(translatable("crystalized.generic.queue.unavailable").color(NamedTextColor.RED).append(name).append(translatable("crystalized.generic.queue.try_again").color(NamedTextColor.RED)));
         }
     }
 
     public void sendAdditionalMessage(GameServer s, QueueSystem.queueTypes type, CompletableFuture<ConnectionRequestBuilder.Result> future){
         if(future == null) return;
-        while(!future.isDone()){}
-        ByteArrayDataOutput out = ByteStreams.newDataOutput();
-        if(type != QueueSystem.queueTypes.litestrike && type != QueueSystem.queueTypes.litestrike_ranked){
-            return;
-        }
-        if(type == QueueSystem.queueTypes.litestrike) {
-            out.writeUTF("ranked_off");
-        }else if(type == QueueSystem.queueTypes.litestrike_ranked){
-            out.writeUTF("ranked_on");
-        }
-        s.server.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+        future.whenComplete((result, error) -> {
+            if (error != null || result == null || !result.isSuccessful()) {
+                return;
+            }
+            ByteArrayDataOutput out = ByteStreams.newDataOutput();
+            if(type != QueueSystem.queueTypes.litestrike && type != QueueSystem.queueTypes.litestrike_ranked){
+                return;
+            }
+            if(type == QueueSystem.queueTypes.litestrike) {
+                out.writeUTF("ranked_off");
+            }else if(type == QueueSystem.queueTypes.litestrike_ranked){
+                out.writeUTF("ranked_on");
+            }
+            s.server.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+        });
     }
 }
 
 class GameServer{
     RegisteredServer server;
     QueueSystem.queueTypes type;
-    QueueSystem.ServerStatus available;
+    QueueSystem.ServerStatus available = QueueSystem.ServerStatus.OFFLINE;
     boolean isGoing = false;
     public List<Player> playersInGame = new ArrayList<>(); //for rejoining
 
@@ -281,23 +270,25 @@ class GameServer{
 
     public void updateServerStatus() {
         QueueSystem.ServerStatus status = available;
-        try {
-            server.ping().get(3, TimeUnit.SECONDS); //to check if its online, otherwise exception is thrown (?)
-            if (server.getPlayersConnected().isEmpty() && isGoing) {
-                available = QueueSystem.ServerStatus.online_free;
+        server.ping().orTimeout(3, TimeUnit.SECONDS).whenComplete((ping, error) -> {
+            if (error != null) {
+                available = QueueSystem.ServerStatus.OFFLINE;
+								if (!error.getMessage().contains("Connection refused")) {
+									Velocity_plugin.logger.warn("got unknown error when pinging backend: " + error.toString());
+								}
+            } else if (server.getPlayersConnected().isEmpty() && isGoing) {
+                available = QueueSystem.ServerStatus.ONLINE_AVAILABLE;
                 isGoing = false;
                 playersInGame.clear();
             } else if (isGoing) {
-                available = QueueSystem.ServerStatus.online_playing;
+                available = QueueSystem.ServerStatus.ONLINE_INGAME;
             } else {
-                available = QueueSystem.ServerStatus.online_free;
+                available = QueueSystem.ServerStatus.ONLINE_AVAILABLE;
             }
-        } catch (Exception e) {
-            available = QueueSystem.ServerStatus.offline;
-        }
-        if (status != available && status != null) { //last check for plugin startup
-            Velocity_plugin.logger.info("[QueueSystem] " + server.getServerInfo().getName() + " has changed availability from " + status + " to " + available);
-        }
+            if (status != available) {
+                Velocity_plugin.logger.info("[QueueSystem] " + server.getServerInfo().getName() + " has changed availability from " + status + " to " + available);
+            }
+        });
     }
 }
 
@@ -332,8 +323,10 @@ class QueueCommand{
         LiteralCommandNode<CommandSource> commandNode = BrigadierCommand.literalArgumentBuilder("unqueue").executes(ctx -> {
                     if (ctx.getSource() instanceof Player p) {
                         QueueSystem.removeFromAllQueues((Player) ctx.getSource());
-                        RegisteredServer lobby = proxy.getServer("lobby").get();
-                        p.createConnectionRequest(lobby).connect();
+                        proxy.getServer("lobby").ifPresentOrElse(
+                            lobby -> p.createConnectionRequest(lobby).connect(),
+                            () -> p.sendMessage(text("[QueueSystem] Lobby server not found.", NamedTextColor.RED))
+                        );
                     }
                     return Command.SINGLE_SUCCESS;
                 }).build();
@@ -365,4 +358,58 @@ class QueueCommand{
 
         return new BrigadierCommand(commandNode);
     }
+}
+
+class QueueStatusCommand implements SimpleCommand {
+	private final ProxyServer server;
+
+	public QueueStatusCommand(ProxyServer server) {
+		this.server = server;
+	}
+
+	@Override
+	public boolean hasPermission(Invocation invocation) {
+		if (invocation.source() instanceof ConsoleCommandSource) {
+			return true;
+		}
+		return invocation.source() instanceof Player p && Velocity_plugin.is_admin(p);
+	}
+
+	@Override
+	public void execute(Invocation invocation) {
+		CommandSource source = invocation.source();
+		source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
+		source.sendMessage(text("Queue system status:").color(NamedTextColor.AQUA));
+
+		for (GameQueue q : QueueSystem.queues) {
+			source.sendMessage(text("  ").append(q.name)
+					.append(text(" (" + q.type + ") - " + q.players.size() + " queued (needed " + q.needed + " / max " + q.max + ")")));
+			for (GameServer s : q.servers) {
+				NamedTextColor color = NamedTextColor.RED;
+				String status = s.available.toString();
+				if (s.available == QueueSystem.ServerStatus.ONLINE_AVAILABLE) {
+					color = NamedTextColor.GREEN;
+				} else if (s.available == QueueSystem.ServerStatus.ONLINE_INGAME) {
+					color = NamedTextColor.GOLD;
+					status += " (" + s.server.getPlayersConnected().size() + " players)";
+				}
+				source.sendMessage(text("    ").append(text(s.server.getServerInfo().getName(), NamedTextColor.WHITE))
+						.append(text(": ", NamedTextColor.WHITE)).append(text(status, color)));
+			}
+		}
+
+		source.sendMessage(text("  Other servers:").color(NamedTextColor.AQUA));
+		for (RegisteredServer rs : server.getAllServers()) {
+			if (isServerInGameQue(rs)) {
+				continue;
+			}
+			source.sendMessage(text("    ").append(text(rs.getServerInfo().getName(), NamedTextColor.WHITE))
+					.append(text(": " + rs.getPlayersConnected().size() + " players")));
+		}
+		source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
+	}
+
+	private boolean isServerInGameQue(RegisteredServer rs) {
+		return QueueSystem.queues.stream().anyMatch(q -> q.servers.stream().anyMatch(gs -> gs.server.equals(rs)));
+	}
 }

@@ -10,47 +10,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 public class Databases {
-    public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql";
-
-    public static HashMap<String, Object> fetchPlayerData(Player p){
-        try (Connection conn = DriverManager.getConnection(LOBBY)){
-            PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
-            prep.setBytes(1, uuid_to_bytes(p));
-            ResultSet set = prep.executeQuery();
-            set.next();
-            ResultSetMetaData data = set.getMetaData();
-            int count = data.getColumnCount();
-            HashMap<String, Object> map = new HashMap<>();
-            for(int i = 1; i <= count; i++){
-                map.put(data.getColumnLabel(i), set.getObject(data.getColumnLabel(i)));
-            }
-            return map;
-        }catch(SQLException e){
-            Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't get data for " + p.getUsername() + "UUID: " + p.getUniqueId());
-            return null;
-        }
-    }
-
-    public static HashMap<String, Object> fetchPlayerData(byte[] p) {
-        try(Connection conn = DriverManager.getConnection(LOBBY)){
-            PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
-            prep.setBytes(1, p);
-            ResultSet set = prep.executeQuery();
-            set.next();
-            ResultSetMetaData data = set.getMetaData();
-            int count = data.getColumnCount();
-            HashMap<String, Object> map = new HashMap<>();
-            for (int i = 1; i <= count; i++) {
-                map.put(data.getColumnLabel(i), set.getObject(data.getColumnLabel(i)));
-            }
-            return map;
-        } catch (SQLException e) {
-            Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't get data for byte[]");
-            return null;
-        }
-    }
+    public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql?busy_timeout=5000";
 
     public static UUID getUUID(String name){
         try(Connection conn = DriverManager.getConnection(LOBBY)){
@@ -105,35 +65,35 @@ public class Databases {
         }
     }
 
-    public static ArrayList<Object[]> fetchFriends(Player p){
+    public static ArrayList<Object[]> fetchFriendsWithNames(Player p){
+        return fetchFriendsWithNames(p.getUniqueId());
+    }
+
+    public static ArrayList<Object[]> fetchFriendsWithNames(UUID uuid){
         try(Connection conn = DriverManager.getConnection(LOBBY)){
-            PreparedStatement prep = conn.prepareStatement("SELECT * FROM Friends WHERE player_uuid = ?;");
-            prep.setBytes(1, uuid_to_bytes(p));
+            PreparedStatement prep = conn.prepareStatement("SELECT f.friend_uuid, lp.player_name FROM Friends f LEFT JOIN LobbyPlayers lp ON lp.player_uuid = f.friend_uuid WHERE f.player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(uuid));
             ResultSet set = prep.executeQuery();
-            ResultSetMetaData data = set.getMetaData();
-            int count = data.getColumnCount();
             ArrayList<Object[]> list = new ArrayList<>();
             while(set.next()) {
-                Object[] o = new Object[3];
-                for (int i = 1; i <= count; i++) {
-                    o[i-1] = set.getObject(data.getColumnLabel(i));
-                }
+                Object[] o = new Object[2];
+                o[0] = set.getObject(1);
+                o[1] = set.getObject(2);
                 list.add(o);
             }
 
             return list;
         }catch(SQLException e){
             Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't get friend data for " + p.getUsername() + " UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info("couldn't get friend data for UUID: " + uuid);
             return null;
         }
     }
 
     public static void addFriend(Player p, Player friend){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+        Properties sqlprop = new Properties();
+        sqlprop.put("transaction_mode", "IMMEDIATE");
+        try(Connection conn = DriverManager.getConnection(LOBBY, sqlprop)){
             conn.setAutoCommit(false);
             PreparedStatement prep = conn.prepareStatement("INSERT INTO Friends(player_uuid, friend_uuid, date) VALUES(?, ?, ?);");
             prep.setBytes(1, uuid_to_bytes(p));
@@ -147,18 +107,16 @@ public class Databases {
             prep.setBytes(2, uuid_to_bytes(p));
             prep.executeUpdate();
             conn.commit();
-            conn.close();
-        }catch(Exception e){
+        }catch(SQLException e){
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("failed adding friends to database");
         }
     }
 
     public static void removeFriend(Player p, byte[] friend){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+        Properties sqlprop = new Properties();
+        sqlprop.put("transaction_mode", "IMMEDIATE");
+        try(Connection conn = DriverManager.getConnection(LOBBY, sqlprop)){
             conn.setAutoCommit(false);
             PreparedStatement prep = conn.prepareStatement("DELETE FROM Friends WHERE player_uuid = ? AND friend_uuid = ?;");
             prep.setBytes(1, uuid_to_bytes(p));
@@ -168,18 +126,16 @@ public class Databases {
             prep.setBytes(2, uuid_to_bytes(p));
             prep.executeUpdate();
             conn.commit();
-            conn.close();
-        }catch(Exception e){
+        }catch(SQLException e){
             Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("failed adding cosmetic to database");
+            Velocity_plugin.logger.info("failed removing friends from database");
         }
     }
 
     public static void updatePlayerNames(Player p){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+        Properties sqlprop = new Properties();
+        sqlprop.put("transaction_mode", "IMMEDIATE");
+        try(Connection conn = DriverManager.getConnection(LOBBY, sqlprop)){
             conn.setAutoCommit(false);
             String makeNewEntry = "UPDATE LobbyPlayers SET player_name = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
@@ -187,7 +143,6 @@ public class Databases {
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
             conn.commit();
-            conn.close();
         }catch(SQLException e) {
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
@@ -208,10 +163,9 @@ public class Databases {
     }
      */
     public static void setOnline(Player p, boolean online){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
+        Properties sqlprop = new Properties();
+        sqlprop.put("transaction_mode", "IMMEDIATE");
+        try(Connection conn = DriverManager.getConnection(LOBBY, sqlprop)){
             conn.setAutoCommit(false);
             String makeNewEntry = "UPDATE LobbyPlayers SET online = ? WHERE player_uuid = ?";
             PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
@@ -221,7 +175,6 @@ public class Databases {
             prepared.setBytes(2, uuid_to_bytes(p));
             prepared.executeUpdate();
             conn.commit();
-            conn.close();
         }catch(SQLException e) {
             Velocity_plugin.logger.info(e.getMessage());
             Velocity_plugin.logger.info("couldn't set online for " + p.getUsername() + " UUID: " + p.getUniqueId());
@@ -286,9 +239,13 @@ public class Databases {
     }
 
     public static HashMap<String, Object> fetchSettings(Player p){
+        return fetchSettings(p.getUniqueId());
+    }
+
+    public static HashMap<String, Object> fetchSettings(UUID uuid){
         try(Connection conn = DriverManager.getConnection(LOBBY)){
             PreparedStatement prep = conn.prepareStatement("SELECT * FROM Settings WHERE player_uuid = ?;");
-            prep.setBytes(1, uuid_to_bytes(p));
+            prep.setBytes(1, uuid_to_bytes(uuid));
             ResultSet set = prep.executeQuery();
             set.next();
             ResultSetMetaData data = set.getMetaData();
@@ -300,27 +257,96 @@ public class Databases {
             return map;
         }catch(SQLException e){
             Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't get settings data for " + p.getUsername() + "UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info("couldn't get settings data for UUID: " + uuid);
             return null;
         }
     }
 
-    public static void updateSetting(Player p, String dbSettingName, double value){
-        try{
-            Properties sqlprop = new Properties();
-            sqlprop.put("transaction_mode", "IMMEDIATE");
-            Connection conn = DriverManager.getConnection(LOBBY, sqlprop);
-            conn.setAutoCommit(false);
-            String makeNewEntry = "UPDATE Settings SET "+ dbSettingName + " = ? WHERE player_uuid = ?";
-            PreparedStatement prepared = conn.prepareStatement(makeNewEntry);
-            prepared.setDouble(1, value);
-            prepared.setBytes(2, uuid_to_bytes(p));
-            prepared.executeUpdate();
-            conn.commit();
-            conn.close();
-        }catch(SQLException e) {
+    public static HashMap<String, Object> fetchPlayerData(UUID uuid){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT * FROM LobbyPlayers WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(uuid));
+            ResultSet set = prep.executeQuery();
+            set.next();
+            ResultSetMetaData data = set.getMetaData();
+            int count = data.getColumnCount();
+            HashMap<String, Object> map = new HashMap<>();
+            for(int i = 1; i <= count; i++){
+                map.put(data.getColumnLabel(i), set.getObject(data.getColumnLabel(i)));
+            }
+            return map;
+        }catch(SQLException e){
             Velocity_plugin.logger.info(e.getMessage());
-            Velocity_plugin.logger.info("couldn't make database entry for " + p.getUsername() + " UUID: " + p.getUniqueId());
+            Velocity_plugin.logger.info("couldn't get player data for UUID: " + uuid);
+            return null;
+        }
+    }
+
+    public static ArrayList<Object[]> fetchCosmetics(UUID uuid){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT cosmetic_id, currently_wearing FROM Cosmetics WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(uuid));
+            ResultSet set = prep.executeQuery();
+            ArrayList<Object[]> list = new ArrayList<>();
+            while(set.next()) {
+                list.add(new Object[]{set.getObject(1), set.getObject(2)});
+            }
+            return list;
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get cosmetics data for UUID: " + uuid);
+            return new ArrayList<>();
+        }
+    }
+
+    public static ArrayList<Object[]> fetchQuests(UUID uuid){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT quest, done, claimed FROM Quests WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(uuid));
+            ResultSet set = prep.executeQuery();
+            ArrayList<Object[]> list = new ArrayList<>();
+            while(set.next()) {
+                list.add(new Object[]{set.getObject(1), set.getObject(2), set.getObject(3)});
+            }
+            return list;
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get quests data for UUID: " + uuid);
+            return new ArrayList<>();
+        }
+    }
+
+    public static ArrayList<Object[]> fetchAchievements(UUID uuid){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT internal_name, progress, stage, done, claimed FROM Achievements WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(uuid));
+            ResultSet set = prep.executeQuery();
+            ArrayList<Object[]> list = new ArrayList<>();
+            while(set.next()) {
+                list.add(new Object[]{set.getObject(1), set.getObject(2), set.getObject(3), set.getObject(4), set.getObject(5)});
+            }
+            return list;
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get achievements data for UUID: " + uuid);
+            return new ArrayList<>();
+        }
+    }
+
+    public static ArrayList<Object[]> fetchParkourTimes(UUID uuid){
+        try(Connection conn = DriverManager.getConnection(LOBBY)){
+            PreparedStatement prep = conn.prepareStatement("SELECT course, best_time, date FROM ParkourTimes WHERE player_uuid = ?;");
+            prep.setBytes(1, uuid_to_bytes(uuid));
+            ResultSet set = prep.executeQuery();
+            ArrayList<Object[]> list = new ArrayList<>();
+            while(set.next()) {
+                list.add(new Object[]{set.getObject(1), set.getObject(2), set.getObject(3)});
+            }
+            return list;
+        }catch(SQLException e){
+            Velocity_plugin.logger.info(e.getMessage());
+            Velocity_plugin.logger.info("couldn't get parkour data for UUID: " + uuid);
+            return new ArrayList<>();
         }
     }
 }

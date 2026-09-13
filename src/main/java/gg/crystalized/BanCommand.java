@@ -253,6 +253,7 @@ class UnbanCommand implements SimpleCommand{
 
 		if(uuid == null){
 			invocation.source().sendMessage(Component.text("Couldn't find player").color(RED));
+			return;
 		}
 
 		if(!Velocity_plugin.ban_command.isBanned(uuid)){

@@ -13,6 +13,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.geysermc.floodgate.api.FloodgateApi;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.translatable;
@@ -40,40 +41,42 @@ class FriendsCommand implements SimpleCommand{
     }
 
     @Override
-    public List<String> suggest(Invocation invocation) {
-        if (!(invocation.source() instanceof Player)) {
+    public CompletableFuture<List<String>> suggestAsync(Invocation invocation) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (!(invocation.source() instanceof Player)) {
+                return List.of();
+            }
+            String[] args = invocation.arguments();
+            if(args.length == 0){
+                return Arrays.asList("request", "remove", "list", "accept", "deny");
+            }
+
+            if(args[0].equals("request")){
+                List<String> allPlayers = new ArrayList<>();
+                for(Player p : server.getAllPlayers()){
+                    allPlayers.add(p.getUsername());
+                }
+                return allPlayers;
+            }
+
+            if(args[0].equals("remove")){
+                return FriendSystem.getAllFriendsNames((Player)invocation.source());
+            }
+
+            if(args[0].equals("list")){
+                return Arrays.asList("online", "offline");
+            }
+
+            if(args[0].equals("accept") || args[0].equals("deny")){
+                List<String> list = new ArrayList<>();
+                for(Player p : Friend.getFriendObject((Player) invocation.source()).currentlyRequesting){
+                    list.add(p.getUsername());
+                }
+                return list;
+            }
+            
             return List.of();
-        }
-        String[] args = invocation.arguments();
-        if(args.length == 0){
-            return Arrays.asList("request", "remove", "list", "accept", "deny");
-        }
-
-        if(args[0].equals("request")){
-            List<String> allPlayers = new ArrayList<>();
-            for(Player p : server.getAllPlayers()){
-                allPlayers.add(p.getUsername());
-            }
-            return allPlayers;
-        }
-
-        if(args[0].equals("remove")){
-            return FriendSystem.getAllFriendsNames((Player)invocation.source());
-        }
-
-        if(args[0].equals("list")){
-            return Arrays.asList("online", "offline");
-        }
-
-        if(args[0].equals("accept") || args[0].equals("deny")){
-            List<String> list = new ArrayList<>();
-            for(Player p : Friend.getFriendObject((Player) invocation.source()).currentlyRequesting){
-                list.add(p.getUsername());
-            }
-            return list;
-        }
-        
-        return List.of();
+        });
     }
 
     @Override
@@ -196,6 +199,11 @@ class FriendsCommand implements SimpleCommand{
                 return;
             }
             if(args[0].equals("accept")){
+                if(Databases.areFriends(executer, requester)){
+                    executer.sendMessage(translatable("crystalized.proxy.friends.already_friends", List.of(Component.text(requester.getUsername()))).color(RED));
+                    exe.currentlyRequesting.remove(requester);
+                    return;
+                }
                 Databases.addFriend(executer, requester);
                 requester.sendMessage(text(executer.getUsername()).append(Component.translatable("crystalized.proxy.friends.accepted")).color(YELLOW));
                 executer.sendMessage(translatable("crystalized.proxy.friends.accepted_from").append(Component.text(requester.getUsername())).color(YELLOW));
@@ -212,14 +220,16 @@ class FriendsCommand implements SimpleCommand{
         }
 
         if(args[0].equals("remove")){
-            ArrayList<Object[]> list = Databases.fetchFriends(executer);
+            ArrayList<Object[]> list = Databases.fetchFriendsWithNames(executer);
             byte[] uuid = null;
-            for (Object[] o : list) {
-                if((Databases.fetchPlayerData((byte[]) o[1]).get("player_name")).equals(args[1])){
-                    uuid = (byte[])o[1];
+            if (list != null) {
+                for (Object[] o : list) {
+                    if (args[1].equals(o[1])) {
+                        uuid = (byte[])o[0];
+                    }
                 }
             }
-            if(!Databases.areFriends(executer, uuid)){
+            if(uuid == null){
                 executer.sendMessage(text(args[1]).append(translatable("crystalized.proxy.friends.not_friend")).color(RED));
                 return;
             }
@@ -242,10 +252,15 @@ public class FriendSystem {
     }
 
     public static ArrayList<String> getAllFriendsNames(Player p) {
-        ArrayList<Object[]> list = Databases.fetchFriends(p);
+        ArrayList<Object[]> list = Databases.fetchFriendsWithNames(p);
         ArrayList<String> friends = new ArrayList<>();
+        if (list == null) {
+            return friends;
+        }
         for (Object[] o : list) {
-            friends.add((String) Databases.fetchPlayerData((byte[]) o[1]).get("player_name"));
+            if (o[1] != null) {
+                friends.add((String) o[1]);
+            }
         }
         return friends;
     }

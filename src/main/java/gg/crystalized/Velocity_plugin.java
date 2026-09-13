@@ -13,7 +13,6 @@ import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
-import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ConsoleCommandSource;
@@ -23,7 +22,6 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.translatable;
@@ -33,8 +31,12 @@ import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 
@@ -94,7 +96,7 @@ public class Velocity_plugin {
 		CommandManager commandManager = server.getCommandManager();
 
 		CommandMeta commandMetahub = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
-		commandManager.register(commandMetahub, new HubCommand(server.getServer("lobby").get()));
+		commandManager.register(commandMetahub, AdminCommands.createHubCommand(server));
 
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
 		ban_command = new BanCommand(server);
@@ -105,10 +107,10 @@ public class Velocity_plugin {
 		commandManager.register(commandMetaunban, unban_command);
 
 		CommandMeta commandMetaBroadcast = commandManager.metaBuilder("broadcast").plugin(this).build();
-		commandManager.register(commandMetaBroadcast, new BroadCastCommand(server));
+		commandManager.register(commandMetaBroadcast, AdminCommands.createBroadcastCommand(server));
 
 		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
-		commandManager.register(commandMetaMsg, new MsgCommand(server));
+		commandManager.register(commandMetaMsg, AdminCommands.createMsgCommand(server));
 
 		CommandMeta commandMetaSetRanked = commandManager.metaBuilder("ls_set_ranked").plugin(this).build();
 		commandManager.register(commandMetaSetRanked, new SetRankedCommand(server));
@@ -118,6 +120,12 @@ public class Velocity_plugin {
 
 		CommandMeta commandMetaKey = commandManager.metaBuilder("key").plugin(this).build();
 		commandManager.register(commandMetaKey, new KeyCommand());
+
+		CommandMeta commandMetaSend = commandManager.metaBuilder("send").plugin(this).build();
+		commandManager.register(commandMetaSend, AdminCommands.createSendCommand(server));
+
+		CommandMeta commandMetaPlayerinfo = commandManager.metaBuilder("playerinfo").plugin(this).build();
+		commandManager.register(commandMetaPlayerinfo, AdminCommands.createPlayerinfoCommand(server, this));
 
         queueSystem = new QueueSystem(server, this); //new version
         server.getEventManager().register(this, queueSystem);
@@ -249,8 +257,10 @@ public class Velocity_plugin {
 		} else if (message2.contains("crystalblitz")) {
 			QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
-			RegisteredServer lobby = server.getServer("lobby").get();
-			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
+			server.getServer("lobby").ifPresentOrElse(
+				lobby -> backend_conn.getPlayer().createConnectionRequest(lobby).connect(),
+				() -> backend_conn.getPlayer().sendMessage(text("[QueueSystem] Lobby server not found.", NamedTextColor.RED))
+			);
 			if(connect){
 				QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			}
@@ -258,14 +268,17 @@ public class Velocity_plugin {
 	}
 
 	@Subscribe
-	public void onPreConnect(ServerPreConnectEvent e){
+	public void onPostLogin(PostLoginEvent e){
 		Databases.updatePlayerNames(e.getPlayer());
 		Databases.setOnline(e.getPlayer(), true);
 		Friend.allFriends.add(new Friend(e.getPlayer()));
-		ArrayList<Object[]> list = Databases.fetchFriends(e.getPlayer());
+		ArrayList<Object[]> list = Databases.fetchFriendsWithNames(e.getPlayer());
+		if(list == null){
+			return;
+		}
 		for(Player p : server.getAllPlayers()){
 			for(Object[] o : list){
-				if(o[1] == Databases.uuid_to_bytes(p)){
+				if(Arrays.equals((byte[]) o[0], Databases.uuid_to_bytes(p))){
 					p.sendMessage(text(e.getPlayer().getUsername()).append(translatable("crystalized.proxy.friends.joined")).color(YELLOW));
 				}
 			}
@@ -273,7 +286,7 @@ public class Velocity_plugin {
 	}
 
 	public static boolean is_mod(Player p) {
-		HashMap<String, Object> playerData = Databases.fetchPlayerData(p);
+		HashMap<String, Object> playerData = Databases.fetchPlayerData(p.getUniqueId());
 		if(playerData.get("rank_id") != null && ((Integer)playerData.get("rank_id") == 1 || (Integer)playerData.get("rank_id") == 2)){
 			return true;
 		}
@@ -290,7 +303,7 @@ public class Velocity_plugin {
 	}
 
 	public static boolean is_admin(Player p) {
-		HashMap<String, Object> playerData = Databases.fetchPlayerData(p);
+		HashMap<String, Object> playerData = Databases.fetchPlayerData(p.getUniqueId());
 		if(playerData.get("rank_id") != null && ((Integer)playerData.get("rank_id") == 1)){
 			return true;
 		}
@@ -304,106 +317,6 @@ public class Velocity_plugin {
 		} else {
 			return false;
 		}
-	}
-}
-
-class HubCommand implements SimpleCommand {
-	private RegisteredServer lobby;
-
-	public HubCommand(RegisteredServer lobby) {
-		this.lobby = lobby;
-	}
-
-	@Override
-	public void execute(Invocation invocation) {
-		((Player) invocation.source()).createConnectionRequest(lobby).connect();
-	}
-
-	@Override
-	public boolean hasPermission(Invocation invocation) {
-		return true;
-	}
-}
-
-class MsgCommand implements SimpleCommand {
-	private ProxyServer server;
-
-	public MsgCommand(ProxyServer server) {
-		this.server = server;
-	}
-
-	@Override
-	public void execute(final Invocation invocation) {
-		if (invocation.arguments().length == 0) {
-			return;
-		}
-		String messenger_name = "Console";
-		if (invocation.source() instanceof Player) {
-			messenger_name = ((Player) invocation.source()).getUsername();
-		}
-		Player p = server.getPlayer(invocation.arguments()[0]).orElse(null);
-		if (p == null) {
-			invocation.source().sendMessage(translatable("crystalized.proxy.msg.not_found").color(RED));
-			return;
-		}
-
-		if(!Settings.isAllowed("dms", p, (Player)invocation.source())){
-			invocation.source().sendMessage(translatable("crystalized.proxy.msg.not_allowed", List.of(Component.text(p.getUsername()))).color(RED));
-			return;
-		}
-
-		Component message = text("");
-		for (String arg : invocation.arguments()) {
-			if (arg == invocation.arguments()[0])
-				continue;
-			message = message.append(text(" " + arg));
-		}
-		invocation.source()
-				.sendMessage(text("[").append(translatable("crystalized.generic.you")).append(text(" -> " + p.getUsername() + "] ")).append(message).color(NamedTextColor.AQUA));
-		p.sendMessage(text("[" + messenger_name + " -> ").append(translatable("crystalized.generic.you")).append(text("] ")).append(message).color(NamedTextColor.AQUA));
-	}
-
-	@Override
-	public List<String> suggest(Invocation invocation) {
-		if (invocation.arguments().length == 0) {
-			return server.getAllPlayers().stream().map(player -> player.getUsername()).collect(Collectors.toList());
-		}
-		if (invocation.arguments().length == 1) {
-			return server.getAllPlayers().stream().map(player -> player.getUsername())
-					.filter(name -> name.startsWith(invocation.arguments()[0])).collect(Collectors.toList());
-		}
-		return List.of();
-	}
-
-	@Override
-	public boolean hasPermission(final Invocation invocation) {
-		return true;
-	}
-
-}
-
-class BroadCastCommand implements RawCommand {
-	private ProxyServer server;
-
-	public BroadCastCommand(ProxyServer server) {
-		this.server = server;
-	}
-
-	@Override
-	public void execute(final Invocation invocation) {
-		Component message = translatable("crystalized.generic.broadcast").color(YELLOW);
-		message = message.append(text(invocation.arguments()));
-		message.append(text("\n"));
-		Audience.audience(server.getAllPlayers()).sendMessage(message);
-	}
-
-	@Override
-	public boolean hasPermission(final Invocation invocation) {
-		if (invocation.source() instanceof ConsoleCommandSource) {
-			return true;
-		}
-		Player p = (Player) invocation.source();
-		return Velocity_plugin.is_admin(p);
 	}
 }
 
