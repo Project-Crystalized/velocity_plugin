@@ -2,6 +2,8 @@ package gg.crystalized;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
@@ -15,8 +17,11 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -27,6 +32,12 @@ import static net.kyori.adventure.text.format.NamedTextColor.RED;
 import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 
 public class AdminCommands {
+	static CompletableFuture<Suggestions> filteredSuggest(SuggestionsBuilder builder, Stream<String> candidates) {
+		String partial = builder.getRemaining().toLowerCase(Locale.ROOT);
+		candidates.filter(c -> c.toLowerCase(Locale.ROOT).startsWith(partial)).forEach(builder::suggest);
+		return builder.buildFuture();
+	}
+
 
 	public static BrigadierCommand createSendCommand(ProxyServer proxy) {
 		LiteralCommandNode<CommandSource> sendNode = BrigadierCommand.literalArgumentBuilder("send")
@@ -37,14 +48,12 @@ public class AdminCommands {
 				})
 				.then(BrigadierCommand.requiredArgumentBuilder("player", StringArgumentType.word())
 						.suggests((ctx, builder) -> {
-							proxy.getAllPlayers().forEach(p -> builder.suggest(p.getUsername()));
-							return builder.buildFuture();
-						})
+							return filteredSuggest(builder, proxy.getAllPlayers().stream().map(Player::getUsername));
+							})
 						.then(BrigadierCommand.requiredArgumentBuilder("server", StringArgumentType.word())
 								.suggests((ctx, builder) -> {
-									proxy.getAllServers().forEach(s -> builder.suggest(s.getServerInfo().getName()));
-									return builder.buildFuture();
-								})
+									return filteredSuggest(builder, proxy.getAllServers().stream().map(s -> s.getServerInfo().getName()));
+									})
 								.executes(ctx -> {
 									String playerName = ctx.getArgument("player", String.class);
 									String serverName = ctx.getArgument("server", String.class);
@@ -96,9 +105,8 @@ public class AdminCommands {
 				})
 				.then(BrigadierCommand.requiredArgumentBuilder("player", StringArgumentType.word())
 						.suggests((ctx, builder) -> {
-							proxy.getAllPlayers().forEach(p -> builder.suggest(p.getUsername()));
-							return builder.buildFuture();
-						})
+							return filteredSuggest(builder, proxy.getAllPlayers().stream().map(Player::getUsername));
+							})
 						.then(BrigadierCommand.requiredArgumentBuilder("message", StringArgumentType.greedyString())
 								.executes(ctx -> {
 									String targetName = ctx.getArgument("player", String.class);
@@ -158,9 +166,8 @@ public class AdminCommands {
 				})
 				.then(BrigadierCommand.requiredArgumentBuilder("player", StringArgumentType.word())
 						.suggests((ctx, builder) -> {
-							proxy.getAllPlayers().forEach(p -> builder.suggest(p.getUsername()));
-							return builder.buildFuture();
-						})
+							return filteredSuggest(builder, proxy.getAllPlayers().stream().map(Player::getUsername));
+							})
 						.executes(ctx -> {
 							String name = ctx.getArgument("player", String.class);
 							CommandSource source = ctx.getSource();

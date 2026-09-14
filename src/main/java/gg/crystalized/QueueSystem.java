@@ -306,9 +306,8 @@ class QueueCommand{
                 .then(BrigadierCommand.literalArgumentBuilder("enter")
                         .then(BrigadierCommand.requiredArgumentBuilder("queue_type", StringArgumentType.word())
                                 .suggests((ctx, builder) -> {
-                                    QueueSystem.queues.forEach(GameQueue -> builder.suggest(GameQueue.type.toString()));
-                                    return builder.buildFuture();
-                                }).executes(ctx -> {
+                                    return AdminCommands.filteredSuggest(builder, QueueSystem.queues.stream().map(GameQueue -> GameQueue.type.toString()));
+                                    }).executes(ctx -> {
                                     String argumentProvided = ctx.getArgument("queue_type", String.class);
                                     try {
                                         QueueSystem.removeFromAllQueues((Player) ctx.getSource());
