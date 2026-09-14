@@ -247,30 +247,24 @@ public class Velocity_plugin {
 
 		String message3 = null;
 		try{message3 = in.readUTF();}catch(IllegalStateException e){}
-		boolean connect = true;
-		if (message3 != null && message3.contains("false")) {
-			connect = false;
-		}
-
-    QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 		if (message2.contains("litestrike")) {
+			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			if(message2.contains("ranked")) {
 				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).addPlayerToQueue(backend_conn.getPlayer());
 			}else {
 				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());
 			}
 		} else if (message2.contains("knockoff")) {
+			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
             QueueSystem.getQueue(QueueSystem.queueTypes.knockoff).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("crystalblitz")) {
+			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("lobby")) {
 			server.getServer("lobby").ifPresentOrElse(
 				lobby -> backend_conn.getPlayer().createConnectionRequest(lobby).connect(),
 				() -> backend_conn.getPlayer().sendMessage(text("[QueueSystem] Lobby server not found.", NamedTextColor.RED))
 			);
-			if(connect){
-				QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
-			}
 		}
 	}
 
