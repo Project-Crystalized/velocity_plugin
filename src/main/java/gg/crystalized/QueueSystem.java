@@ -53,11 +53,11 @@ public class QueueSystem {
         this.server = server;
 
         //NOTE: These need to be unique, no duplicates otherwise we may have issues with for loops and/or commands iterating through the queues list
-        queues.add(new GameQueue(server, plugin, queueTypes.litestrike, 6, 10, translatable("crystalized.game.litestrike.name").color(NamedTextColor.GREEN)));
-        queues.add(new GameQueue(server, plugin, queueTypes.litestrike_ranked, 6, 8, text("Litestrike Ranked").color(NamedTextColor.GREEN))); //FixMe
-        queues.add(new GameQueue(server, plugin, queueTypes.knockoff, 3, 12, translatable("crystalized.game.knockoff.name").color(NamedTextColor.GOLD)));
-        queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz, 3, 8, translatable("crystalized.game.crystalblitz.name").color(NamedTextColor.LIGHT_PURPLE)));
-        //queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz_duos, 4, 16, text("Crystal Blitz duos").color(NamedTextColor.LIGHT_PURPLE)));
+        queues.add(new GameQueue(server, plugin, queueTypes.litestrike, 6, 10, translatable("crystalized.game.litestrike.name").color(NamedTextColor.GREEN), true));
+        queues.add(new GameQueue(server, plugin, queueTypes.litestrike_ranked, 6, 8, text("Litestrike Ranked").color(NamedTextColor.GREEN), true)); //FixMe
+        queues.add(new GameQueue(server, plugin, queueTypes.knockoff, 3, 12, translatable("crystalized.game.knockoff.name").color(NamedTextColor.GOLD), false));
+        queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz, 3, 8, translatable("crystalized.game.crystalblitz.name").color(NamedTextColor.LIGHT_PURPLE), false));
+        //queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz_duos, 4, 16, text("Crystal Blitz duos").color(NamedTextColor.LIGHT_PURPLE), false));
 
         CommandManager commandManager = server.getCommandManager();
         CommandMeta commandMetaQueue = commandManager.metaBuilder("queue").plugin(plugin).build();
@@ -132,9 +132,11 @@ class GameQueue{
     public Component name;
     int needed;
     int max;
+    boolean needsEvenTeams;
 
-    public GameQueue(ProxyServer proxyServer, Velocity_plugin plugin, QueueSystem.queueTypes type, int playersNeededToStart, int playersMaxLimit,  Component visualName) {
+    public GameQueue(ProxyServer proxyServer, Velocity_plugin plugin, QueueSystem.queueTypes type, int playersNeededToStart, int playersMaxLimit,  Component visualName, boolean needsEvenTeams) {
         this.type = type;
+        this.needsEvenTeams = needsEvenTeams;
         this.proxyServer = proxyServer;
         this.plugin = plugin;
         this.needed = playersNeededToStart;
@@ -157,10 +159,11 @@ class GameQueue{
             }
 
             //Queue timer
-            if (players.size() >= needed && !queueTimerStarted) {
+            boolean ready = players.size() >= needed && (!needsEvenTeams || players.size() % 2 == 0);
+            if (ready && !queueTimerStarted) {
                 queueTimerStarted = true;
                 timer = 15;
-            } else if (players.size() < needed && queueTimerStarted) {
+            } else if (!ready && queueTimerStarted) {
                 queueTimerStarted = false;
                 for (Player p : players) {
                     p.sendMessage(translatable("crystalized.generic.queue.cancelled"));
