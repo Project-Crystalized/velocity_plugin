@@ -70,7 +70,7 @@ public class QueueSystem {
         commandManager.register(commandMetaRejoin, QueueCommand.createRejoinCommand(server));
 
         CommandMeta commandMetaQueueStatus = commandManager.metaBuilder("queuestatus").plugin(plugin).build();
-        commandManager.register(commandMetaQueueStatus, new QueueStatusCommand(server));
+        commandManager.register(commandMetaQueueStatus, QueueCommand.createStatusCommand(server));
 
     }
 
@@ -366,58 +366,49 @@ class QueueCommand{
 
         return new BrigadierCommand(commandNode);
     }
-}
 
-class QueueStatusCommand implements SimpleCommand {
-	private final ProxyServer server;
+    public static BrigadierCommand createStatusCommand(final ProxyServer proxy) {
+        LiteralCommandNode<CommandSource> commandNode = BrigadierCommand.literalArgumentBuilder("queuestatus")
+                .requires(src -> src instanceof ConsoleCommandSource
+                        || (src instanceof Player p && Velocity_plugin.is_admin(p)))
+                .executes(ctx -> {
+                    CommandSource source = ctx.getSource();
+                    source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
+                    source.sendMessage(text("Queue system status:").color(NamedTextColor.AQUA));
 
-	public QueueStatusCommand(ProxyServer server) {
-		this.server = server;
-	}
+                    for (GameQueue q : QueueSystem.queues) {
+                        source.sendMessage(text("  ").append(q.name)
+                                .append(text(" (" + q.type + ") - " + q.players.size() + " queued (needed " + q.needed + " / max " + q.max + ")")));
+                        for (GameServer s : q.servers) {
+                            NamedTextColor color = NamedTextColor.RED;
+                            String status = s.available.toString();
+                            if (s.available == QueueSystem.ServerStatus.ONLINE_AVAILABLE) {
+                                color = NamedTextColor.GREEN;
+                            } else if (s.available == QueueSystem.ServerStatus.ONLINE_INGAME) {
+                                color = NamedTextColor.GOLD;
+                                status += " (" + s.server.getPlayersConnected().size() + " players)";
+                            }
+                            source.sendMessage(text("    ").append(text(s.server.getServerInfo().getName(), NamedTextColor.WHITE))
+                                    .append(text(": ", NamedTextColor.WHITE)).append(text(status, color)));
+                        }
+                    }
 
-	@Override
-	public boolean hasPermission(Invocation invocation) {
-		if (invocation.source() instanceof ConsoleCommandSource) {
-			return true;
-		}
-		return invocation.source() instanceof Player p && Velocity_plugin.is_admin(p);
-	}
+                    source.sendMessage(text("  Other servers:").color(NamedTextColor.AQUA));
+                    for (RegisteredServer rs : proxy.getAllServers()) {
+                        if (isServerInGameQue(rs)) {
+                            continue;
+                        }
+                        source.sendMessage(text("    ").append(text(rs.getServerInfo().getName(), NamedTextColor.WHITE))
+                                .append(text(": " + rs.getPlayersConnected().size() + " players")));
+                    }
+                    source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
+                    return Command.SINGLE_SUCCESS;
+                }).build();
 
-	@Override
-	public void execute(Invocation invocation) {
-		CommandSource source = invocation.source();
-		source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
-		source.sendMessage(text("Queue system status:").color(NamedTextColor.AQUA));
+        return new BrigadierCommand(commandNode);
+    }
 
-		for (GameQueue q : QueueSystem.queues) {
-			source.sendMessage(text("  ").append(q.name)
-					.append(text(" (" + q.type + ") - " + q.players.size() + " queued (needed " + q.needed + " / max " + q.max + ")")));
-			for (GameServer s : q.servers) {
-				NamedTextColor color = NamedTextColor.RED;
-				String status = s.available.toString();
-				if (s.available == QueueSystem.ServerStatus.ONLINE_AVAILABLE) {
-					color = NamedTextColor.GREEN;
-				} else if (s.available == QueueSystem.ServerStatus.ONLINE_INGAME) {
-					color = NamedTextColor.GOLD;
-					status += " (" + s.server.getPlayersConnected().size() + " players)";
-				}
-				source.sendMessage(text("    ").append(text(s.server.getServerInfo().getName(), NamedTextColor.WHITE))
-						.append(text(": ", NamedTextColor.WHITE)).append(text(status, color)));
-			}
-		}
-
-		source.sendMessage(text("  Other servers:").color(NamedTextColor.AQUA));
-		for (RegisteredServer rs : server.getAllServers()) {
-			if (isServerInGameQue(rs)) {
-				continue;
-			}
-			source.sendMessage(text("    ").append(text(rs.getServerInfo().getName(), NamedTextColor.WHITE))
-					.append(text(": " + rs.getPlayersConnected().size() + " players")));
-		}
-		source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
-	}
-
-	private boolean isServerInGameQue(RegisteredServer rs) {
-		return QueueSystem.queues.stream().anyMatch(q -> q.servers.stream().anyMatch(gs -> gs.server.equals(rs)));
-	}
+    private static boolean isServerInGameQue(RegisteredServer rs) {
+        return QueueSystem.queues.stream().anyMatch(q -> q.servers.stream().anyMatch(gs -> gs.server.equals(rs)));
+    }
 }
