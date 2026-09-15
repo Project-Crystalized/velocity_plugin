@@ -22,7 +22,7 @@ import static gg.crystalized.Databases.uuid_to_bytes;
 import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 public class BanCommand implements SimpleCommand {
-	public static final String URL = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/ban_db.sql";
+	public static final String URL = "jdbc:sqlite:" + Databases.dbDir() + "/ban_db.sql";
 	private ProxyServer proxy;
 
 	public BanCommand(ProxyServer proxy) {

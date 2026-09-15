@@ -10,7 +10,17 @@ import java.util.Properties;
 import java.util.UUID;
 
 public class Databases {
-    public static final String LOBBY = "jdbc:sqlite:" + System.getProperty("user.home") + "/databases/lobby_db.sql?busy_timeout=5000";
+    public static String dbDir() {
+        String d = System.getenv("CRYSTALIZED_DB_DIR");
+        if (d == null || d.isBlank()) d = System.getProperty("user.home") + "/databases/test_dbs";
+        try {
+            java.nio.file.Files.createDirectories(java.nio.file.Path.of(d));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Could not create database directory: " + d, e);
+        }
+        return d;
+    }
+    public static final String LOBBY = "jdbc:sqlite:" + dbDir() + "/lobby_db.sql?busy_timeout=5000";
 
     public static UUID getUUID(String name){
         try(Connection conn = DriverManager.getConnection(LOBBY)){
