@@ -376,20 +376,31 @@ class QueueCommand{
                     source.sendMessage(text("-------------").color(NamedTextColor.GOLD));
                     source.sendMessage(text("Queue system status:").color(NamedTextColor.AQUA));
 
+                    // Litestrike + ranked share one server pool: show together as one category
+                    GameQueue litestrike = QueueSystem.getQueue(QueueSystem.queueTypes.litestrike);
+                    GameQueue ranked = QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked);
+                    if (litestrike != null) {
+                        source.sendMessage(text("  ").append(litestrike.name)
+                                .append(text(" - " + litestrike.players.size() + " queued (" + litestrike.needed + " needed / " + litestrike.max + " max)")));
+                    }
+                    if (ranked != null) {
+                        source.sendMessage(text("  ").append(ranked.name)
+                                .append(text(" - " + ranked.players.size() + " queued (" + ranked.needed + " needed / " + ranked.max + " max)")));
+                    }
+                    if (litestrike != null) {
+                        for (GameServer s : litestrike.servers) {
+                            sendServerLine(source, s);
+                        }
+                    }
+
                     for (GameQueue q : QueueSystem.queues) {
+                        if (q.type == QueueSystem.queueTypes.litestrike || q.type == QueueSystem.queueTypes.litestrike_ranked) {
+                            continue; // shown together above
+                        }
                         source.sendMessage(text("  ").append(q.name)
-                                .append(text(" (" + q.type + ") - " + q.players.size() + " queued (needed " + q.needed + " / max " + q.max + ")")));
+                                .append(text(" - " + q.players.size() + " queued (" + q.needed + " needed / " + q.max + " max)")));
                         for (GameServer s : q.servers) {
-                            NamedTextColor color = NamedTextColor.RED;
-                            String status = s.available.toString();
-                            if (s.available == QueueSystem.ServerStatus.ONLINE_AVAILABLE) {
-                                color = NamedTextColor.GREEN;
-                            } else if (s.available == QueueSystem.ServerStatus.ONLINE_INGAME) {
-                                color = NamedTextColor.GOLD;
-                                status += " (" + s.server.getPlayersConnected().size() + " players)";
-                            }
-                            source.sendMessage(text("    ").append(text(s.server.getServerInfo().getName(), NamedTextColor.WHITE))
-                                    .append(text(": ", NamedTextColor.WHITE)).append(text(status, color)));
+                            sendServerLine(source, s);
                         }
                     }
 
@@ -406,6 +417,19 @@ class QueueCommand{
                 }).build();
 
         return new BrigadierCommand(commandNode);
+    }
+
+    private static void sendServerLine(CommandSource source, GameServer s) {
+        NamedTextColor color = NamedTextColor.RED;
+        String status = s.available.toString();
+        if (s.available == QueueSystem.ServerStatus.ONLINE_AVAILABLE) {
+            color = NamedTextColor.GREEN;
+        } else if (s.available == QueueSystem.ServerStatus.ONLINE_INGAME) {
+            color = NamedTextColor.GOLD;
+            status += " (" + s.server.getPlayersConnected().size() + " players)";
+        }
+        source.sendMessage(text("    ").append(text(s.server.getServerInfo().getName(), NamedTextColor.WHITE))
+                .append(text(": ", NamedTextColor.WHITE)).append(text(status, color)));
     }
 
     private static boolean isServerInGameQue(RegisteredServer rs) {
