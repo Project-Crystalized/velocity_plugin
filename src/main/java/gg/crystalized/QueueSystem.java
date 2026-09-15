@@ -153,11 +153,14 @@ class GameQueue{
         }
         Velocity_plugin.logger.info("[QueueSystem] Registered \"" + type + "\" queue with " + servers.size() + " server(s).");
 
+
         proxyServer.getScheduler().buildTask(plugin, () -> {
             for (GameServer s : servers) {
                 s.updateServerStatus();
             }
+        }).repeat(4, TimeUnit.SECONDS).schedule();
 
+        proxyServer.getScheduler().buildTask(plugin, () -> {
             //Queue timer
             boolean ready = players.size() >= needed && (!needsEvenTeams || players.size() % 2 == 0);
             if (ready && !queueTimerStarted) {
@@ -275,7 +278,7 @@ class GameServer{
         this.server = server;
     }
 
-    public void updateServerStatus() {
+    protected void updateServerStatus() {
         QueueSystem.ServerStatus status = available;
         server.ping().orTimeout(3, TimeUnit.SECONDS).whenComplete((ping, error) -> {
             if (error != null) {
@@ -300,7 +303,6 @@ class GameServer{
 }
 
 class QueueCommand{
-    //this is a mess
     public static BrigadierCommand createBrigadierCommand(final ProxyServer proxy) {
         LiteralCommandNode<CommandSource> commandNode = BrigadierCommand.literalArgumentBuilder("queue")
                 .then(BrigadierCommand.literalArgumentBuilder("enter")
