@@ -9,6 +9,7 @@ import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -82,6 +83,10 @@ public class AdminCommands {
 		LiteralCommandNode<CommandSource> hubNode = BrigadierCommand.literalArgumentBuilder("hub")
 				.executes(ctx -> {
 					if (ctx.getSource() instanceof Player p) {
+						Optional<ServerConnection> opt = p.getCurrentServer();
+						if(opt.isEmpty() || opt.get().getServer().getServerInfo().getName().contains("limbo")) {
+							return Command.SINGLE_SUCCESS;
+						}
 						Optional<RegisteredServer> lobby = proxy.getServer("lobby");
 						if (lobby.isEmpty()) {
 							p.sendMessage(text("Lobby server not found.").color(RED));
