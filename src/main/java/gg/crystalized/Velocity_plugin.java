@@ -33,21 +33,19 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 
-@Plugin(id = "crystalized_plugin", name = "crystalized_plugin", version = "0.1.0-SNAPSHOT", url = "https://crystalized.cc", description = "plugin for crystalized mc server", authors = {
-		"crystalized_team" })
+@Plugin(id = "crystalized_plugin", name = "crystalized_plugin", version = "0.1.0-SNAPSHOT", url = "https://crystalized.cc", description = "plugin for crystalized mc server", authors = { "crystalized_team" })
 public class Velocity_plugin {
 
 	public final ProxyServer server;
 	public static Logger logger;
-	final static boolean CLOSED_BETA = false;
-    public static QueueSystem queueSystem;
+	final static boolean CLOSED_BETA = true;
+  public static QueueSystem queueSystem;
 	public static BanCommand ban_command;
 	public static UnbanCommand unban_command;
 	public PartySystem party_system;
@@ -250,6 +248,11 @@ public class Velocity_plugin {
 		if (message2.contains("litestrike")) {
 			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			if(message2.contains("ranked")) {
+				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).addPlayerToQueue(backend_conn.getPlayer());
+			}else if ("false".equals(message3)
+					&& QueueSystem.lastGameQueue.get(backend_conn.getPlayer().getUniqueId()) == QueueSystem.queueTypes.litestrike_ranked) {
+				// message3 "false" is only ever sent by the Requeue button (fresh queue joins send "true"),
+				// so send the player back to the ranked queue they came from instead of casual.
 				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).addPlayerToQueue(backend_conn.getPlayer());
 			}else {
 				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());

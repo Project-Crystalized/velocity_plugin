@@ -22,8 +22,10 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +36,9 @@ public class QueueSystem {
     private Velocity_plugin velocity;
     public ProxyServer server;
     public static List<GameQueue> queues = new ArrayList<>();
+    // Last game queue each player was sent from, so the Requeue button can send
+    // them back to the queue they came from. Cleared on disconnect.
+    public static Map<UUID, queueTypes> lastGameQueue = new ConcurrentHashMap<>();
 
     protected enum ServerStatus{
         ONLINE_AVAILABLE,
@@ -118,6 +123,7 @@ public class QueueSystem {
     public void onPlayerDisconnect(DisconnectEvent e) {
         Player p = e.getPlayer();
         QueueSystem.removeFromAllQueues(p);
+        QueueSystem.lastGameQueue.remove(p.getUniqueId());
     }
 }
 
@@ -236,6 +242,9 @@ class GameQueue{
                 sent.add(p);
             }
             players.removeAll(sent);
+            for (Player p : sent) {
+                QueueSystem.lastGameQueue.put(p.getUniqueId(), type);
+            }
             sendAdditionalMessage(target, type, future);
             return;
         }
