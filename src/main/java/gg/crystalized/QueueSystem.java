@@ -23,10 +23,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static net.kyori.adventure.text.Component.text;
@@ -125,14 +125,12 @@ public class QueueSystem {
 
     @Subscribe
     public void onPlayerDisconnect(DisconnectEvent e) {
-        Player p = e.getPlayer();
-        QueueSystem.removeFromAllQueues(p);
-        QueueSystem.lastGameQueue.remove(p.getUniqueId());
+        QueueSystem.lastGameQueue.remove(e.getPlayer().getUniqueId());
     }
 }
 
 class GameQueue{
-    List<Player> players = new CopyOnWriteArrayList<>();
+    Set<Player> players = ConcurrentHashMap.newKeySet();
     List<GameServer> servers = new ArrayList<>();
     private Velocity_plugin plugin;
     ProxyServer proxyServer;
@@ -172,6 +170,7 @@ class GameQueue{
 
         proxyServer.getScheduler().buildTask(plugin, () -> {
             //Queue timer
+            players.removeIf(p -> !p.isActive());
             boolean ready = players.size() >= needed && (!needsEvenTeams || players.size() % 2 == 0);
             if (ready && !queueTimerStarted) {
                 queueTimerStarted = true;
@@ -227,8 +226,7 @@ class GameQueue{
     }
 
     public void removePlayerToQueue(Player p) {
-        if (players.contains(p)) {
-            players.remove(p);
+        if (players.remove(p)) {
             p.sendMessage(translatable("crystalized.generic.queue.left", List.of(name)));
             p.sendActionBar(text("")); //To instantly remove the actionbar instead of minecraft fading the text away
         }

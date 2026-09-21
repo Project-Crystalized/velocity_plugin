@@ -293,9 +293,8 @@ public class AdminCommands {
 
 	private static String findQueueState(Player online) {
 		for (GameQueue q : QueueSystem.queues) {
-			int pos = q.players.indexOf(online);
-			if (pos >= 0) {
-				return q.type + " (" + (pos + 1) + "/" + q.players.size() + ")";
+			if (q.players.contains(online)) {
+				return q.type + " (" + q.players.size() + " queued)";
 			}
 		}
 		for (GameQueue q : QueueSystem.queues) {
