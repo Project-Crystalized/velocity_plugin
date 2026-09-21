@@ -237,6 +237,13 @@ public class Velocity_plugin {
 			return;
 		}
 
+		if(message1.contains("queue")){
+			String message2 = in.readUTF();
+			if(message2.equals("leave")){
+				QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
+			}
+		}
+
 		if (!(message1.contains("Connect"))) {
 			return;
 		}

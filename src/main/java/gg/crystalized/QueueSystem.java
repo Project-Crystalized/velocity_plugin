@@ -92,6 +92,10 @@ public class QueueSystem {
         for (GameQueue q : queues) {
             q.removePlayerToQueue(p);
         }
+        ByteArrayDataOutput out = ByteStreams.newDataOutput();
+        out.writeUTF("queue");
+        out.writeUTF("leave");
+        if(p.getCurrentServer().isPresent()) p.getCurrentServer().get().sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
     }
 
     @Subscribe
@@ -210,6 +214,10 @@ class GameQueue{
                 if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
                     players.add(p);
                     p.sendMessage(translatable("crystalized.generic.queue.queued_for").append(name));
+                    ByteArrayDataOutput out = ByteStreams.newDataOutput();
+                    out.writeUTF("queue");
+                    out.writeUTF("enter");
+                    if(p.getCurrentServer().isPresent()) p.getCurrentServer().get().sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
                     return;
                 }
             }
