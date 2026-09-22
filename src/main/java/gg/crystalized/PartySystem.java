@@ -283,10 +283,7 @@ class PartyCommand implements SimpleCommand {
 		} else if (args[0].equals("disband")) {
 			Audience.audience(party.members).sendMessage(translatable("crystalized.proxy.party.disband").color(TextColor.fromHexString("#f299da")));
 			ps.partys.remove(party);
-			for (Player p : party.members) {
-                QueueSystem.removeFromAllQueues(executer);
-			}
-
+			party.members.forEach(p -> QueueSystem.removeFromAllQueues(p));
 		} else if (args[0].equals("leave")) {
 			ps.remove_player(executer);
             QueueSystem.removeFromAllQueues(executer);

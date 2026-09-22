@@ -1,22 +1,27 @@
 package gg.crystalized;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 
+import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.proxy.ConnectionRequestBuilder;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
@@ -51,9 +56,33 @@ class RequeueRoutingTest {
 				Map.of("getUniqueId", UUID.randomUUID(), "isActive", true, "getCurrentServer", Optional.empty()));
 	}
 
+	Player connectablePlayer() {
+		ConnectionRequestBuilder.Result result = Mocks.mock(ConnectionRequestBuilder.Result.class,
+				Map.of("isSuccessful", true));
+		ConnectionRequestBuilder builder = Mocks.mock(ConnectionRequestBuilder.class,
+				Map.of("connect", CompletableFuture.completedFuture(result)));
+		return Mocks.mock(Player.class, Map.of("getUniqueId", UUID.randomUUID(), "isActive", true,
+				"getCurrentServer", Optional.empty(), "createConnectionRequest", builder));
+	}
+
 	void matchmake(Player p, QueueSystem.queueTypes type) {
 		QueueSystem.getQueue(type).addPlayerToQueue(p);
 		QueueSystem.getQueue(type).sendAllPlayersToServer(type);
+	}
+
+	static String[] decodePluginMessage(byte[] data) {
+		ByteArrayDataInput in = ByteStreams.newDataInput(data);
+		return new String[] { in.readUTF() };
+	}
+
+	static byte[] sentBytes(List<Object[]> sent, int index) {
+		return (byte[]) ((Object[]) sent.get(index)[1])[1];
+	}
+
+	static void awaitMessages(List<Object[]> sent) throws InterruptedException {
+		for (int i = 0; i < 200 && sent.isEmpty(); i++) {
+			Thread.sleep(10);
+		}
 	}
 
 	void connectMessage(Player p, String queue, String third) {
@@ -122,12 +151,45 @@ class RequeueRoutingTest {
 		backendMessage(p, "queue", "leave");
 		assertFalse(QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).players.contains(p));
 	}
-
 	@Test
-	void disconnectClearsHistory() {		Player p = player();
+	void disconnectClearsHistory() {
+		Player p = player();
 		QueueSystem.lastGameQueue.put(p.getUniqueId(), QueueSystem.queueTypes.litestrike_ranked);
 		new QueueSystem(proxy, null)
 				.onPlayerDisconnect(new DisconnectEvent(p, DisconnectEvent.LoginStatus.SUCCESSFUL_LOGIN));
 		assertFalse(QueueSystem.lastGameQueue.containsKey(p.getUniqueId()));
+	}
+
+	@Test
+	void rankedOnSentToBackendOnRankedSend() throws InterruptedException {
+		List<Object[]> sent = new ArrayList<>();
+		RegisteredServer backend = Mocks.recording(RegisteredServer.class, sent, Map.of());
+		GameServer wrapper = new GameServer(backend, QueueSystem.queueTypes.litestrike_ranked);
+		wrapper.available = QueueSystem.ServerStatus.ONLINE_AVAILABLE;
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).servers.clear();
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).servers.add(wrapper);
+		Player p = connectablePlayer();
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).addPlayerToQueue(p);
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked)
+				.sendAllPlayersToServer(QueueSystem.queueTypes.litestrike_ranked);
+		awaitMessages(sent);
+		assertEquals(1, sent.size());
+		assertEquals("ranked_on", decodePluginMessage(sentBytes(sent, 0))[0]);
+	}
+
+	@Test
+	void rankedOffSentToBackendOnCasualSend() throws InterruptedException {
+		List<Object[]> sent = new ArrayList<>();
+		RegisteredServer backend = Mocks.recording(RegisteredServer.class, sent, Map.of());
+		GameServer wrapper = new GameServer(backend, QueueSystem.queueTypes.litestrike);
+		wrapper.available = QueueSystem.ServerStatus.ONLINE_AVAILABLE;
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).servers.clear();
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).servers.add(wrapper);
+		Player p = connectablePlayer();
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(p);
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).sendAllPlayersToServer(QueueSystem.queueTypes.litestrike);
+		awaitMessages(sent);
+		assertEquals(1, sent.size());
+		assertEquals("ranked_off", decodePluginMessage(sentBytes(sent, 0))[0]);
 	}
 }
