@@ -10,7 +10,6 @@ import com.velocitypowered.api.command.*;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
-import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.ConnectionRequestBuilder;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -384,8 +383,7 @@ class QueueCommand{
 
     public static BrigadierCommand createStatusCommand(final ProxyServer proxy) {
         LiteralCommandNode<CommandSource> commandNode = BrigadierCommand.literalArgumentBuilder("queuestatus")
-                .requires(src -> src instanceof ConsoleCommandSource
-                        || (src instanceof Player p && Velocity_plugin.is_admin(p)))
+                .requires(src -> true)
                 .executes(ctx -> {
                     for (Component line : formatQueueStatus(proxy)) {
                         ctx.getSource().sendMessage(line);
