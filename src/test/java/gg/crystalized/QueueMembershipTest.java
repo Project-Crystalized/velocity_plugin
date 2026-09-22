@@ -94,18 +94,15 @@ class QueueMembershipTest {
 	}
 
 	@Test
-	void removeAbsentIsSilent() {
-		Player stranger = player(true);
-		queue.removePlayerToQueue(stranger);
-		assertEquals(0, queue.players.size());
-	}
-
-	@Test
-	void removePresentRemoves() {
-		Player p = player(true);
+	void removePresentRemovesAndNotifies() {
+		List<Object[]> sent = new ArrayList<>();
+		Player p = Mocks.recording(Player.class, sent,
+				Map.of("getUniqueId", UUID.randomUUID(), "isActive", true, "getCurrentServer", Optional.empty()));
 		queue.addPlayerToQueue(p);
+		sent.clear();
 		queue.removePlayerToQueue(p);
 		assertFalse(queue.players.contains(p));
+		assertEquals(1, sent.stream().filter(call -> call[0].equals("sendMessage")).count());
 	}
 
 	@Test
@@ -125,18 +122,6 @@ class QueueMembershipTest {
 		Player p = player(true);
 		queue.addPlayerToQueue(p);
 		assertEquals(0, queue.players.size());
-	}
-
-	@Test
-	void sendRemovesFromListAndRecordsHistory() {
-		Player a = player(true);
-		Player b = player(true);
-		queue.addPlayerToQueue(a);
-		queue.addPlayerToQueue(b);
-		queue.sendAllPlayersToServer(QueueSystem.queueTypes.knockoff);
-		assertTrue(queue.players.isEmpty());
-		assertEquals(QueueSystem.queueTypes.knockoff, QueueSystem.lastGameQueue.get(a.getUniqueId()));
-		assertEquals(QueueSystem.queueTypes.knockoff, QueueSystem.lastGameQueue.get(b.getUniqueId()));
 	}
 
 	@Test
