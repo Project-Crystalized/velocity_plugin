@@ -306,6 +306,7 @@ public class Velocity_plugin {
 				|| p.getUsername().equals(".CallumIsBad6502")
 				|| p.getUsername().equals("LadyCat_")
 				|| p.getUsername().equals("___mira___")
+				|| p.getUsername().equals("MISHEROP")
 				|| p.getUsername().equals("Delieve")) {
 			return true;
 		} else {
@@ -323,6 +324,7 @@ public class Velocity_plugin {
 				|| p.getUsername().equals(".CallumIsBad6502")
 				|| p.getUsername().equals("LadyCat_")
 				|| p.getUsername().equals("___mira___")
+				|| p.getUsername().equals("MISHEROP")
 				|| p.getUsername().equals("Delieve")) {
 			return true;
 		} else {
