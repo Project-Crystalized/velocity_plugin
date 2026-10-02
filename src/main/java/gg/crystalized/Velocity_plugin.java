@@ -127,6 +127,7 @@ public class Velocity_plugin {
 
         queueSystem = new QueueSystem(server, this); //new version
         server.getEventManager().register(this, queueSystem);
+        server.getEventManager().register(this, new EmojiChat());
 	}
 
 	@Subscribe
