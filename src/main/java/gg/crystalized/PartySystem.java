@@ -255,7 +255,7 @@ class PartyCommand implements SimpleCommand {
 				executer.sendMessage(translatable("crystalized.proxy.party.invite.not").color(RED));
 				return;
 			}
-			Audience.audience(party_to_join.members).sendMessage(text(mentioned_player.getUsername()).append(translatable("crystalized.proxy.party.join.player")).color(TextColor.fromHexString("#f299da")));
+			Audience.audience(party_to_join.members).sendMessage(text(executer.getUsername()).append(translatable("crystalized.proxy.party.join.player")).color(TextColor.fromHexString("#f299da")));
 			executer.sendMessage(translatable("crystalized.proxy.party.join.you", List.of(text(args[1]))).color(TextColor.fromHexString("#f299da")));
 			party_to_join.members.add(executer);
 			//plugin.que_system.remove_player_from_que(executer);
