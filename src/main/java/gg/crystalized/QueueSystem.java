@@ -58,10 +58,9 @@ public class QueueSystem {
 
         //NOTE: These need to be unique, no duplicates otherwise we may have issues with for loops and/or commands iterating through the queues list
         queues.add(new GameQueue(server, plugin, queueTypes.litestrike, 6, 10, translatable("crystalized.game.litestrike.name").color(NamedTextColor.GREEN), true));
-        queues.add(new GameQueue(server, plugin, queueTypes.litestrike_ranked, 6, 8, text("Litestrike Ranked").color(NamedTextColor.GREEN), true)); //FixMe
+        queues.add(new GameQueue(server, plugin, queueTypes.litestrike_ranked, 6, 10, text("Litestrike Ranked").color(NamedTextColor.GREEN), true));
         queues.add(new GameQueue(server, plugin, queueTypes.knockoff, 3, 12, translatable("crystalized.game.knockoff.name").color(NamedTextColor.GOLD), false));
-        queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz, 3, 8, translatable("crystalized.game.crystalblitz.name").color(NamedTextColor.LIGHT_PURPLE), false));
-        //queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz_duos, 4, 16, text("Crystal Blitz duos").color(NamedTextColor.LIGHT_PURPLE), false));
+        queues.add(new GameQueue(server, plugin, queueTypes.crystalblitz, 3, 16, translatable("crystalized.game.crystalblitz.name").color(NamedTextColor.LIGHT_PURPLE), false));
 
         CommandManager commandManager = server.getCommandManager();
         CommandMeta commandMetaQueue = commandManager.metaBuilder("queue").plugin(plugin).build();
