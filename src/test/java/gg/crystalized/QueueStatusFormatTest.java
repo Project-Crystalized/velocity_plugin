@@ -66,7 +66,7 @@ class QueueStatusFormatTest {
 		assertTrue(text.contains("-------------"));
 		assertTrue(text.contains("Queue system status:"));
 		assertTrue(text.contains("0 queued (6 needed / 10 max)"));
-		assertTrue(text.contains("0 queued (6 needed / 8 max)"));
+		assertTrue(text.contains("0 queued (3 needed / 16 max)"));
 		assertTrue(text.contains("0 queued (3 needed / 12 max)"));
 		assertFalse(text.contains("starting in"));
 	}
