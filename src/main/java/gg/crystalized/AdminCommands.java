@@ -22,6 +22,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -39,6 +40,30 @@ public class AdminCommands {
 		return builder.buildFuture();
 	}
 
+	// last DM partner per player, both directions. console can neither receive
+	// DMs nor hold an entry, so only player UUIDs are ever stored here.
+	static final ConcurrentHashMap<UUID, UUID> lastDmPartner = new ConcurrentHashMap<>();
+
+	static void forgetDmPartner(UUID uuid) {
+		lastDmPartner.remove(uuid);
+		lastDmPartner.entrySet().removeIf(e -> e.getValue().equals(uuid));
+	}
+
+	static void sendDirectMessage(CommandSource source, Player target, String rawMessage) {
+		String messengerName = "Console";
+		if (source instanceof Player sender) {
+			messengerName = sender.getUsername();
+			if (!Settings.isAllowed("dms", target, sender)) {
+				source.sendMessage(translatable("crystalized.proxy.msg.not_allowed", List.of(Component.text(target.getUsername()))).color(RED));
+				return;
+			}
+			lastDmPartner.put(sender.getUniqueId(), target.getUniqueId());
+			lastDmPartner.put(target.getUniqueId(), sender.getUniqueId());
+		}
+		Component message = text(" " + rawMessage);
+		source.sendMessage(text("[").append(translatable("crystalized.generic.you")).append(text(" -> " + target.getUsername() + "] ")).append(message).color(NamedTextColor.AQUA));
+		target.sendMessage(text("[" + messengerName + " -> ").append(translatable("crystalized.generic.you")).append(text("] ")).append(message).color(NamedTextColor.AQUA));
+	}
 
 	public static BrigadierCommand createSendCommand(ProxyServer proxy) {
 		LiteralCommandNode<CommandSource> sendNode = BrigadierCommand.literalArgumentBuilder("send")
@@ -122,23 +147,36 @@ public class AdminCommands {
 										source.sendMessage(translatable("crystalized.proxy.msg.not_found").color(RED));
 										return Command.SINGLE_SUCCESS;
 									}
-									String messengerName = "Console";
-									if (source instanceof Player sender) {
-										messengerName = sender.getUsername();
-										if (!Settings.isAllowed("dms", target, sender)) {
-											source.sendMessage(translatable("crystalized.proxy.msg.not_allowed", List.of(Component.text(target.getUsername()))).color(RED));
-											return Command.SINGLE_SUCCESS;
-										}
-									}
-									Component message = text(" " + rawMessage);
-									source.sendMessage(text("[").append(translatable("crystalized.generic.you")).append(text(" -> " + target.getUsername() + "] ")).append(message).color(NamedTextColor.AQUA));
-									target.sendMessage(text("[" + messengerName + " -> ").append(translatable("crystalized.generic.you")).append(text("] ")).append(message).color(NamedTextColor.AQUA));
+									sendDirectMessage(source, target, rawMessage);
 									return Command.SINGLE_SUCCESS;
 								})
 						)
 				)
 				.build();
 		return new BrigadierCommand(msgNode);
+	}
+
+	public static BrigadierCommand createReplyCommand(ProxyServer proxy) {
+		LiteralCommandNode<CommandSource> replyNode = BrigadierCommand.literalArgumentBuilder("r")
+				.executes(ctx -> {
+					ctx.getSource().sendMessage(text("Usage: /r <message>").color(RED));
+					return Command.SINGLE_SUCCESS;
+				})
+				.then(BrigadierCommand.requiredArgumentBuilder("message", StringArgumentType.greedyString())
+						.executes(ctx -> {
+							CommandSource source = ctx.getSource();
+							UUID partnerUuid = source instanceof Player sender ? lastDmPartner.get(sender.getUniqueId()) : null;
+							Player target = partnerUuid == null ? null : proxy.getPlayer(partnerUuid).orElse(null);
+							if (target == null) {
+								source.sendMessage(text("You have no one to reply to.").color(RED));
+								return Command.SINGLE_SUCCESS;
+							}
+							sendDirectMessage(source, target, ctx.getArgument("message", String.class));
+							return Command.SINGLE_SUCCESS;
+						})
+				)
+				.build();
+		return new BrigadierCommand(replyNode);
 	}
 
 	public static BrigadierCommand createBroadcastCommand(ProxyServer proxy) {

@@ -79,6 +79,7 @@ public class Velocity_plugin {
 	public void onDisconnect(DisconnectEvent e) {
 		party_system.remove_player(e.getPlayer());
 		Friend.allFriends.remove(Friend.getFriendObject(e.getPlayer()));
+		AdminCommands.forgetDmPartner(e.getPlayer().getUniqueId());
 		Databases.setOnline(e.getPlayer(), false);
 	}
 
@@ -109,6 +110,9 @@ public class Velocity_plugin {
 
 		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
 		commandManager.register(commandMetaMsg, AdminCommands.createMsgCommand(server));
+
+		CommandMeta commandMetaReply = commandManager.metaBuilder("r").aliases("reply").plugin(this).build();
+		commandManager.register(commandMetaReply, AdminCommands.createReplyCommand(server));
 
 		CommandMeta commandMetaSetRanked = commandManager.metaBuilder("ls_set_ranked").plugin(this).build();
 		commandManager.register(commandMetaSetRanked, new SetRankedCommand(server));
