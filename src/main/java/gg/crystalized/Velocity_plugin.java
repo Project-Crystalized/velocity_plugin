@@ -287,6 +287,15 @@ public class Velocity_plugin {
 		Databases.updatePlayerNames(e.getPlayer());
 		Databases.setOnline(e.getPlayer(), true);
 		Friend.allFriends.add(new Friend(e.getPlayer()));
+		if (QueueCommand.findRejoinableServer(e.getPlayer()).isPresent()) {
+			Player returning = e.getPlayer();
+			server.getScheduler().buildTask(this,
+					() -> {
+						if (returning.isActive() && QueueCommand.findRejoinableServer(returning).isPresent()) {
+							returning.sendMessage(translatable("crystalized.generic.queue.rejoin.available").color(YELLOW));
+						}
+					}).delay(5, TimeUnit.SECONDS).schedule();
+		}
 		ArrayList<Object[]> list = Databases.fetchFriendsWithNames(e.getPlayer());
 		if(list == null){
 			return;

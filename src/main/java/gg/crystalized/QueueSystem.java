@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -358,17 +359,17 @@ class QueueCommand{
     public static BrigadierCommand createRejoinCommand(final ProxyServer proxy) {
         LiteralCommandNode<CommandSource> commandNode = BrigadierCommand.literalArgumentBuilder("rejoin").executes(ctx -> {
             if (ctx.getSource() instanceof Player p) {
+                Optional<RegisteredServer> target = findRejoinableServer(p);
+                if (target.isPresent()) {
+                    p.sendMessage(translatable("crystalized.generic.queue.rejoin"));
+                    p.createConnectionRequest(target.get()).connect();
+                    return Command.SINGLE_SUCCESS;
+                }
                 for (GameQueue gq : QueueSystem.queues) {
                     for (GameServer gs : gq.servers) {
                         if (gs.playersInGame.contains(p.getUniqueId())) {
-                            if (gs.type.equals(QueueSystem.queueTypes.litestrike) || gs.type.equals(QueueSystem.queueTypes.litestrike_ranked)) {
-                                p.sendMessage(translatable("crystalized.generic.queue.rejoin"));
-                                p.createConnectionRequest(gs.server).connect();
-                                return Command.SINGLE_SUCCESS;
-                            } else {
-                                p.sendMessage(translatable("crystalized.generic.queue.rejoin.supported").color(NamedTextColor.RED));
-                                return Command.SINGLE_SUCCESS;
-                            }
+                            p.sendMessage(translatable("crystalized.generic.queue.rejoin.supported").color(NamedTextColor.RED));
+                            return Command.SINGLE_SUCCESS;
                         }
                     }
                 }
@@ -378,6 +379,18 @@ class QueueCommand{
         }).build();
 
         return new BrigadierCommand(commandNode);
+    }
+
+    public static Optional<RegisteredServer> findRejoinableServer(Player p) {
+        for (GameQueue gq : QueueSystem.queues) {
+            for (GameServer gs : gq.servers) {
+                if (gs.playersInGame.contains(p.getUniqueId())
+                        && (gs.type.equals(QueueSystem.queueTypes.litestrike) || gs.type.equals(QueueSystem.queueTypes.litestrike_ranked))) {
+                    return Optional.of(gs.server);
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     public static BrigadierCommand createStatusCommand(final ProxyServer proxy) {
