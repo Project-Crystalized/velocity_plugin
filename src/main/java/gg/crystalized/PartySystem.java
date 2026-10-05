@@ -194,6 +194,11 @@ class PartyCommand implements SimpleCommand {
 				invocation.source().sendMessage(translatable("crystalized.proxy.friends.not_found", List.of(Component.text(args[1]))).color(RED));
 				return;
 			}
+			if ((args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add"))
+					&& mentioned_player.getUniqueId().equals(executer.getUniqueId())) {
+				invocation.source().sendMessage(text("Forever alone? Not my problem invite denied.").color(RED));
+				return;
+			}
 		}
 
 		Party party = ps.get_party_of(executer);
@@ -239,7 +244,7 @@ class PartyCommand implements SimpleCommand {
 			party.invited.add(args[1]);
 			Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/party join " + executer.getUsername()));
 			mentioned_player.sendMessage(
-					translatable("crystalized.proxy.party.invite.you", List.of(Component.text((executer).getUsername()))).color(TextColor.fromHexString("#f299da")).append(accept));
+					translatable("crystalized.proxy.party.invite.you", List.of(Component.text((executer).getUsername()))).color(TextColor.fromHexString("#f299da")).append(text(" ")).append(accept));
 
 		} else if (args[0].equals("join") || args[0].equals("accept")) {
 			if (party != null) {

@@ -147,6 +147,10 @@ public class AdminCommands {
 										source.sendMessage(translatable("crystalized.proxy.msg.not_found").color(RED));
 										return Command.SINGLE_SUCCESS;
 									}
+									if (source instanceof Player sender && sender.getUniqueId().equals(target.getUniqueId())) {
+										source.sendMessage(text("Talking to yourself? I dont judge, but the message stays unsent.").color(RED));
+										return Command.SINGLE_SUCCESS;
+									}
 									sendDirectMessage(source, target, rawMessage);
 									return Command.SINGLE_SUCCESS;
 								})

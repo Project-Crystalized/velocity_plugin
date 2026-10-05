@@ -70,6 +70,20 @@ class PartySystemTest {
 	}
 
 	@Test
+	void inviteSelfIsRejectedWithJoke() {
+		List<Object[]> calls = new java.util.ArrayList<>();
+		UUID id = UUID.randomUUID();
+		Player lonely = Mocks.recording(Player.class, calls,
+				Map.of("getUniqueId", id, "isActive", true, "getCurrentServer", Optional.empty(),
+						"getUsername", "lonely"));
+		PartySystem ps = new PartySystem(proxy, null);
+		execute(ps, serverWith(lonely), lonely, "invite", "lonely");
+		assertTrue(calls.stream().anyMatch(c -> c[0].equals("sendMessage")
+				&& ((Object[]) c[1])[0].toString().contains("Forever alone")));
+		assertTrue(ps.partys.isEmpty());
+	}
+
+	@Test
 	void disbandDequeuesEveryMember() {
 		Player leader = player("leader");
 		Player member = player("member1");
