@@ -448,6 +448,9 @@ class QueueCommand{
                                         if (gq.players.contains(p) && gq.type == QueueSystem.queueTypes.litestrike
                                                 && gq.smallGameVoteTimer > 0) {
                                             gq.smallGameVotes.put(p.getUniqueId(), choice.equalsIgnoreCase("yes"));
+                                            long yesVotes = gq.smallGameVotes.values().stream().filter(Boolean.TRUE::equals).count();
+                                            p.sendMessage(translatable("crystalized.generic.queue.smallgame.voted",
+                                                    List.of(text(yesVotes + "/4"))).color(NamedTextColor.GREEN));
                                             return Command.SINGLE_SUCCESS;
                                         }
                                     }
