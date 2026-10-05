@@ -16,6 +16,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.ArrayList;
@@ -141,6 +142,13 @@ class GameQueue{
     int max;
     boolean needsEvenTeams;
 
+    // 2v2 offer for a stuck casual 4-stack: after waiting a
+    // while, ask all 4 if they want to play 2v2 instead. unanimous yes starts it.
+    int smallGameWait = 0;
+    int smallGameVoteTimer = 0;
+    int smallGameCooldown = 0;
+    final Map<UUID, Boolean> smallGameVotes = new ConcurrentHashMap<>();
+
     public GameQueue(ProxyServer proxyServer, Velocity_plugin plugin, QueueSystem.queueTypes type, int playersNeededToStart, int playersMaxLimit,  Component visualName, boolean needsEvenTeams) {
         this.type = type;
         this.needsEvenTeams = needsEvenTeams;
@@ -199,9 +207,94 @@ class GameQueue{
                     p.sendActionBar(translatable("crystalized.generic.queue.actionbar", translatableList));
                 }
             }
+            tickSmallGameVote();
 
 
         }).repeat(1, TimeUnit.SECONDS).schedule();
+    }
+
+    boolean hasAvailableServer() {
+        for (GameServer s : servers) {
+            if (s.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void resetSmallGameVote() {
+        smallGameWait = 0;
+        smallGameVoteTimer = 0;
+        smallGameVotes.clear();
+    }
+
+    private void tickSmallGameVote() {
+        if (type != QueueSystem.queueTypes.litestrike) {
+            return;
+        }
+        if (smallGameCooldown > 0) {
+            smallGameCooldown--;
+        }
+        // drop votes of players who left through any path (leave, kick, sweep,
+        // disconnect) so a rejoiner never inherits a stale vote
+        smallGameVotes.keySet().removeIf(
+                uuid -> players.stream().noneMatch(p -> p.getUniqueId().equals(uuid)));
+        if (queueTimerStarted || players.size() != 4) {
+            resetSmallGameVote();
+            return;
+        }
+        if (smallGameVoteTimer > 0) {
+            boolean anyNo = false;
+            boolean allYes = true;
+            for (Player p : players) {
+                Boolean vote = smallGameVotes.get(p.getUniqueId());
+                if (Boolean.FALSE.equals(vote)) {
+                    anyNo = true;
+                }
+                if (!Boolean.TRUE.equals(vote)) {
+                    allYes = false;
+                }
+            }
+            if (anyNo) {
+                failSmallGameVote();
+                return;
+            }
+            if (allYes) {
+                sendAllPlayersToServer(type);
+                resetSmallGameVote();
+                smallGameCooldown = 60;
+                return;
+            }
+            smallGameVoteTimer--;
+            if (smallGameVoteTimer <= 0) {
+                failSmallGameVote();
+            }
+            return;
+        }
+        if (smallGameCooldown > 0) {
+            return;
+        }
+        smallGameWait++;
+        if (smallGameWait >= 60 && hasAvailableServer()) {
+            smallGameVoteTimer = 20;
+            smallGameVotes.clear();
+            for (Player p : players) {
+                Component yes = translatable("crystalized.generic.yes").color(NamedTextColor.GREEN)
+                        .clickEvent(ClickEvent.runCommand("/queue vote yes"));
+                Component no = translatable("crystalized.generic.no").color(NamedTextColor.RED)
+                        .clickEvent(ClickEvent.runCommand("/queue vote no"));
+                p.sendMessage(translatable("crystalized.generic.queue.smallgame.ask").append(text(" "))
+                        .append(yes).append(text(" ")).append(no));
+            }
+        }
+    }
+
+    private void failSmallGameVote() {
+        for (Player p : players) {
+            p.sendMessage(translatable("crystalized.generic.queue.smallgame.failed").color(NamedTextColor.RED));
+        }
+        resetSmallGameVote();
+        smallGameCooldown = 60;
     }
 
     public void addPlayerToQueue(Player p) {
@@ -332,6 +425,34 @@ class QueueCommand{
                                     } catch (Exception ex) {
                                         ctx.getSource().sendRichMessage("[QueueSystem] <red>Cannot add to queue, exception occurred.");
                                     }
+                                    return Command.SINGLE_SUCCESS;
+                                })
+                        )
+                )
+                .then(BrigadierCommand.literalArgumentBuilder("vote")
+                        .executes(ctx -> {
+                            ctx.getSource().sendMessage(text("Usage: /queue vote <yes|no>").color(NamedTextColor.RED));
+                            return Command.SINGLE_SUCCESS;
+                        })
+                        .then(BrigadierCommand.requiredArgumentBuilder("choice", StringArgumentType.word())
+                                .executes(ctx -> {
+                                    if (!(ctx.getSource() instanceof Player p)) {
+                                        return Command.SINGLE_SUCCESS;
+                                    }
+                                    String choice = ctx.getArgument("choice", String.class);
+                                    if (!choice.equalsIgnoreCase("yes") && !choice.equalsIgnoreCase("no")) {
+                                        ctx.getSource().sendMessage(text("Usage: /queue vote <yes|no>").color(NamedTextColor.RED));
+                                        return Command.SINGLE_SUCCESS;
+                                    }
+                                    for (GameQueue gq : QueueSystem.queues) {
+                                        if (gq.players.contains(p) && gq.type == QueueSystem.queueTypes.litestrike
+                                                && gq.smallGameVoteTimer > 0) {
+                                            gq.smallGameVotes.put(p.getUniqueId(), choice.equalsIgnoreCase("yes"));
+                                            return Command.SINGLE_SUCCESS;
+                                        }
+                                    }
+                                    ctx.getSource().sendMessage(
+                                            translatable("crystalized.generic.queue.smallgame.novote").color(NamedTextColor.RED));
                                     return Command.SINGLE_SUCCESS;
                                 })
                         )
