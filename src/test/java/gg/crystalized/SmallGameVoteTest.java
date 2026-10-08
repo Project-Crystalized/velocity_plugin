@@ -99,6 +99,32 @@ class SmallGameVoteTest {
 	}
 
 	@Test
+	void voteOpenShowsTitleToAllVoters() {
+		List<List<Object[]>> inboxes = new ArrayList<>();
+		for (int i = 0; i < 4; i++) {
+			queue.addPlayerToQueue(voter(inboxes));
+		}
+		tick(60);
+		for (List<Object[]> inbox : inboxes) {
+			assertTrue(called(inbox, "showTitle"));
+		}
+	}
+
+	@Test
+	void voteHalfwayReflashesTitle() {
+		List<List<Object[]>> inboxes = new ArrayList<>();
+		for (int i = 0; i < 4; i++) {
+			queue.addPlayerToQueue(voter(inboxes));
+		}
+		tick(60);
+		tick(10);
+		for (List<Object[]> inbox : inboxes) {
+			long titles = inbox.stream().filter(c -> c[0].equals("showTitle")).count();
+			assertEquals(2, titles);
+		}
+	}
+
+	@Test
 	void unanimousYesStartsGame() throws Exception {
 		List<Player> voters = new ArrayList<>();
 		List<List<Object[]>> inboxes = new ArrayList<>();

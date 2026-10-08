@@ -18,7 +18,9 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.title.Title;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -267,6 +269,11 @@ class GameQueue{
                 return;
             }
             smallGameVoteTimer--;
+            if (smallGameVoteTimer == 10) {
+                for (Player p : players) {
+                    showVoteTitle(p);
+                }
+            }
             if (smallGameVoteTimer <= 0) {
                 failSmallGameVote();
             }
@@ -286,8 +293,16 @@ class GameQueue{
                         .clickEvent(ClickEvent.runCommand("/queue vote no"));
                 p.sendMessage(translatable("crystalized.generic.queue.smallgame.ask").append(text(" "))
                         .append(yes).append(text(" ")).append(no));
+                showVoteTitle(p);
             }
         }
+    }
+
+    private void showVoteTitle(Player p) {
+        p.showTitle(Title.title(
+                text("Play a 2v2?"),
+                text("Vote in chat now"),
+                Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(3), Duration.ofMillis(500))));
     }
 
     private void failSmallGameVote() {
