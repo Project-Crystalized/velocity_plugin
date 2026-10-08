@@ -204,6 +204,37 @@ public class AdminCommands {
 		return new BrigadierCommand(broadcastNode);
 	}
 
+	public static BrigadierCommand createRankedQueueCommand(ProxyServer proxy) {
+		LiteralCommandNode<CommandSource> rankedQueueNode = BrigadierCommand.literalArgumentBuilder("rankedqueue")
+				.requires(source -> !(source instanceof Player) || Velocity_plugin.is_admin((Player) source))
+				.executes(ctx -> {
+					GameQueue q = QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked);
+					ctx.getSource().sendMessage(text("Ranked queue is currently " + (q.open ? "open" : "closed") + ". Usage: /rankedqueue <on|off>"));
+					return Command.SINGLE_SUCCESS;
+				})
+				.then(BrigadierCommand.requiredArgumentBuilder("state", StringArgumentType.word())
+						.suggests((ctx, builder) -> {
+							return filteredSuggest(builder, Stream.of("on", "off"));
+						})
+						.executes(ctx -> {
+							String state = ctx.getArgument("state", String.class);
+							GameQueue q = QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked);
+							if (state.equalsIgnoreCase("on")) {
+								q.open = true;
+								ctx.getSource().sendMessage(text("Ranked queue opened.").color(NamedTextColor.GREEN));
+							} else if (state.equalsIgnoreCase("off")) {
+								q.open = false;
+								ctx.getSource().sendMessage(text("Ranked queue closed. No new players can queue for ranked.").color(NamedTextColor.RED));
+							} else {
+								ctx.getSource().sendMessage(text("Usage: /rankedqueue <on|off>").color(RED));
+							}
+							return Command.SINGLE_SUCCESS;
+						})
+				)
+				.build();
+		return new BrigadierCommand(rankedQueueNode);
+	}
+
 	public static BrigadierCommand createPlayerinfoCommand(ProxyServer proxy, Velocity_plugin plugin) {
 		LiteralCommandNode<CommandSource> playerinfoNode = BrigadierCommand.literalArgumentBuilder("playerinfo")
 				.requires(source -> !(source instanceof Player) || Velocity_plugin.is_admin((Player) source))

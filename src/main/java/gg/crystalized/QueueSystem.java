@@ -141,6 +141,7 @@ class GameQueue{
     int needed;
     int max;
     boolean needsEvenTeams;
+    public boolean open = true;
 
     // 2v2 offer for a stuck casual 4-stack: after waiting a
     // while, ask all 4 if they want to play 2v2 instead. unanimous yes starts it.
@@ -298,6 +299,10 @@ class GameQueue{
     }
 
     public void addPlayerToQueue(Player p) {
+        if (!open) {
+            p.sendMessage(text("The ").append(name).append(text(" queue is currently closed.")));
+            return;
+        }
         if (players.size() == max) {
             p.sendMessage(translatable("crystalized.generic.queue.full", List.of(name)));
         } else {
