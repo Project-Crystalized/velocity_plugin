@@ -410,6 +410,8 @@ class GameServer{
         server.ping().orTimeout(3, TimeUnit.SECONDS).whenComplete((ping, error) -> {
             if (error != null) {
                 available = QueueSystem.ServerStatus.OFFLINE;
+                isGoing = false;
+                playersInGame.clear();
 								if (!error.getMessage().contains("Connection refused")) {
 									Velocity_plugin.logger.warn("got unknown error when pinging backend: " + error.toString());
 								}

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.proxy.Player;
@@ -72,5 +73,29 @@ class RejoinNotifyTest {
 	void noGameIsNotAdvertised() {
 		backend(QueueSystem.queueTypes.litestrike);
 		assertTrue(QueueCommand.findRejoinableServer(player()).isEmpty());
+	}
+
+	GameServer deadBackend(QueueSystem.queueTypes type) {
+		RegisteredServer dead = Mocks.mock(RegisteredServer.class,
+				Map.of("ping", CompletableFuture.failedFuture(new RuntimeException("Connection refused"))));
+		GameServer backend = new GameServer(dead, type);
+		backend.available = QueueSystem.ServerStatus.ONLINE_INGAME;
+		backend.isGoing = true;
+		QueueSystem.getQueue(type).servers.add(backend);
+		return backend;
+	}
+
+	@Test
+	void failedPingClearsRejoinState() throws Exception {
+		Player p = player();
+		GameServer backend = deadBackend(QueueSystem.queueTypes.litestrike);
+		backend.playersInGame.add(p.getUniqueId());
+		assertEquals(Optional.of(backend.server), QueueCommand.findRejoinableServer(p));
+		backend.updateServerStatus();
+		for (int i = 0; i < 200 && !backend.playersInGame.isEmpty(); i++) {
+			Thread.sleep(10);
+		}
+		assertTrue(backend.playersInGame.isEmpty());
+		assertTrue(QueueCommand.findRejoinableServer(p).isEmpty());
 	}
 }
