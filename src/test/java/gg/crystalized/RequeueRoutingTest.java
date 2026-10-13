@@ -152,12 +152,12 @@ class RequeueRoutingTest {
 		assertFalse(QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).players.contains(p));
 	}
 	@Test
-	void disconnectClearsHistory() {
+	void disconnectPreservesHistory() {
 		Player p = player();
 		QueueSystem.lastGameQueue.put(p.getUniqueId(), QueueSystem.queueTypes.litestrike_ranked);
 		new QueueSystem(proxy, null)
 				.onPlayerDisconnect(new DisconnectEvent(p, DisconnectEvent.LoginStatus.SUCCESSFUL_LOGIN));
-		assertFalse(QueueSystem.lastGameQueue.containsKey(p.getUniqueId()));
+		assertEquals(QueueSystem.queueTypes.litestrike_ranked, QueueSystem.lastGameQueue.get(p.getUniqueId()));
 	}
 
 	@Test

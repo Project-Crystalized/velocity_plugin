@@ -127,7 +127,6 @@ public class QueueSystem {
 
     @Subscribe
     public void onPlayerDisconnect(DisconnectEvent e) {
-        QueueSystem.lastGameQueue.remove(e.getPlayer().getUniqueId());
     }
 }
 
