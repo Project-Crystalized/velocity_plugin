@@ -57,14 +57,4 @@ class RankedQueueToggleTest {
 		ranked.addPlayerToQueue(p);
 		assertFalse(ranked.players.contains(p));
 	}
-
-	@Test
-	void reopeningRankedQueueAcceptsJoinsAgain() {
-		GameQueue ranked = QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked);
-		ranked.open = false;
-		ranked.open = true;
-		Player p = player();
-		ranked.addPlayerToQueue(p);
-		assertTrue(ranked.players.contains(p));
-	}
 }

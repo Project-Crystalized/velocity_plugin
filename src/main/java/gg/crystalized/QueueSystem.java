@@ -43,6 +43,23 @@ public class QueueSystem {
     // them back to the queue they came from. Cleared on disconnect.
     public static Map<UUID, queueTypes> lastGameQueue = new ConcurrentHashMap<>();
 
+    // Online/offline cache for registered servers outside the queue pools
+    // (e.g. lobby), so /queuestatus can show their state. Refreshed by ping;
+    // absent entry means no ping has completed yet.
+    public static Map<String, ServerStatus> otherServerStatus = new ConcurrentHashMap<>();
+
+    static void updateOtherServerStatus(ProxyServer proxy) {
+        for (RegisteredServer rs : proxy.getAllServers()) {
+            if (queues.stream().anyMatch(q -> q.servers.stream().anyMatch(gs -> gs.server.equals(rs)))) {
+                continue;
+            }
+            String name = rs.getServerInfo().getName();
+            rs.ping().orTimeout(3, TimeUnit.SECONDS).whenComplete((ping, error) -> {
+                otherServerStatus.put(name, error != null ? ServerStatus.OFFLINE : ServerStatus.ONLINE_AVAILABLE);
+            });
+        }
+    }
+
     protected enum ServerStatus{
         ONLINE_AVAILABLE,
         ONLINE_INGAME,
@@ -78,6 +95,8 @@ public class QueueSystem {
 
         CommandMeta commandMetaQueueStatus = commandManager.metaBuilder("queuestatus").plugin(plugin).build();
         commandManager.register(commandMetaQueueStatus, QueueCommand.createStatusCommand(server));
+
+        server.getScheduler().buildTask(plugin, () -> updateOtherServerStatus(server)).repeat(4, TimeUnit.SECONDS).schedule();
 
     }
 
@@ -580,8 +599,7 @@ class QueueCommand{
             if (QueueSystem.queues.stream().anyMatch(q -> q.servers.stream().anyMatch(gs -> gs.server.equals(rs)))) {
                 continue;
             }
-            lines.add(text("    ").append(text(rs.getServerInfo().getName(), NamedTextColor.WHITE))
-                    .append(text(": " + rs.getPlayersConnected().size() + " players")));
+            lines.add(otherServerStatusLine(rs));
         }
         lines.add(text("-------------").color(NamedTextColor.GOLD));
         return lines;
@@ -607,5 +625,17 @@ class QueueCommand{
         }
         return text("    ").append(text(shortName, NamedTextColor.WHITE))
                 .append(text(": ", NamedTextColor.WHITE)).append(text(status, color));
+    }
+
+    private static Component otherServerStatusLine(RegisteredServer rs) {
+        Component line = text("    ").append(text(rs.getServerInfo().getName(), NamedTextColor.WHITE))
+                .append(text(": " + rs.getPlayersConnected().size() + " players"));
+        QueueSystem.ServerStatus status = QueueSystem.otherServerStatus.get(rs.getServerInfo().getName());
+        if (status == null) {
+            return line;
+        }
+        boolean online = status == QueueSystem.ServerStatus.ONLINE_AVAILABLE;
+        return line.append(text(online ? " (online)" : " (offline)",
+                online ? NamedTextColor.GREEN : NamedTextColor.RED));
     }
 }
