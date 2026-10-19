@@ -336,13 +336,10 @@ public class Velocity_plugin {
 			return true;
 		}
 		if (p.getUsername().equals("cooltexture")
-				|| p.getUsername().equals("Callum_Is_Bad")
-				|| p.getUsername().equals(".CallumIsBad6502")
 				|| p.getUsername().equals("LadyCat_")
 				|| p.getUsername().equals("___mira___")
 				|| p.getUsername().equals("MISHEROP")
-				|| p.getUsername().equals("Bonezilord")
-				|| p.getUsername().equals("Delieve")) {
+				|| p.getUsername().equals("Bonezilord")) {
 			return true;
 		} else {
 			return false;
