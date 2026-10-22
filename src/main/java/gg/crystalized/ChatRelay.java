@@ -233,12 +233,15 @@ public class ChatRelay {
 		return allowed[0];
 	}
 
-	static Component formatLine(int rankId, String username, String message) {
+	static Component formatName(int rankId, String username) {
 		int id = clampRank(rankId);
 		Component name = Component.text(username).color(TextColor.fromHexString(COLOR[id]));
-		Component line = ICON[id].isEmpty()
+		return ICON[id].isEmpty()
 			? name
 			: Component.text(ICON[id]).color(NamedTextColor.WHITE).append(Component.text(" ")).append(name);
-		return line.append(Component.text(": ")).append(Component.text(message));
+	}
+
+	static Component formatLine(int rankId, String username, String message) {
+		return formatName(rankId, username).append(Component.text(": ")).append(Component.text(message));
 	}
 }
