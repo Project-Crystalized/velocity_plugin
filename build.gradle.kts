@@ -24,6 +24,11 @@ dependencies {
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
 
     compileOnly("org.geysermc.floodgate:api:2.2.3-SNAPSHOT")
+
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
 }
 
 java {
@@ -40,5 +45,11 @@ tasks {
 tasks {
 	build {
     dependsOn("shadowJar")
+	}
+	test {
+		useJUnitPlatform()
+		testLogging {
+			events("passed", "failed", "skipped")
+		}
 	}
 }

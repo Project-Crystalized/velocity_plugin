@@ -22,7 +22,6 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.translatable;
@@ -31,23 +30,21 @@ import static net.kyori.adventure.text.format.NamedTextColor.YELLOW;
 
 import net.kyori.adventure.text.format.NamedTextColor;
 
+import java.util.*;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 
-@Plugin(id = "crystalized_plugin", name = "crystalized_plugin", version = "0.1.0-SNAPSHOT", url = "https://crystalized.cc", description = "plugin for crystalized mc server", authors = {
-		"crystalized_team" })
+@Plugin(id = "crystalized_plugin", name = "crystalized_plugin", version = "0.1.0-SNAPSHOT", url = "https://crystalized.cc", description = "plugin for crystalized mc server", authors = { "crystalized_team" })
 public class Velocity_plugin {
 
 	public final ProxyServer server;
 	public static Logger logger;
-	final static boolean CLOSED_BETA = false;
+	final static boolean CLOSED_BETA = true;
     public static QueueSystem queueSystem;
 	public static BanCommand ban_command;
 	public static UnbanCommand unban_command;
@@ -82,6 +79,7 @@ public class Velocity_plugin {
 	public void onDisconnect(DisconnectEvent e) {
 		party_system.remove_player(e.getPlayer());
 		Friend.allFriends.remove(Friend.getFriendObject(e.getPlayer()));
+		AdminCommands.forgetDmPartner(e.getPlayer().getUniqueId());
 		Databases.setOnline(e.getPlayer(), false);
 	}
 
@@ -91,13 +89,15 @@ public class Velocity_plugin {
 		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
 		server.getChannelRegistrar().register(SetRankedCommand.LS_CHANNEL);
 
+		server.getEventManager().register(this, new ChatRelay(this, server));
+
 		this.party_system = new PartySystem(server, this);
 		this.friend_system = new FriendSystem(server, this);
 
 		CommandManager commandManager = server.getCommandManager();
 
 		CommandMeta commandMetahub = commandManager.metaBuilder("hub").aliases("l", "lobby").plugin(this).build();
-		commandManager.register(commandMetahub, new HubCommand(server.getServer("lobby").get()));
+		commandManager.register(commandMetahub, AdminCommands.createHubCommand(server));
 
 		CommandMeta commandMetaban = commandManager.metaBuilder("ban").plugin(this).build();
 		ban_command = new BanCommand(server);
@@ -108,10 +108,13 @@ public class Velocity_plugin {
 		commandManager.register(commandMetaunban, unban_command);
 
 		CommandMeta commandMetaBroadcast = commandManager.metaBuilder("broadcast").plugin(this).build();
-		commandManager.register(commandMetaBroadcast, new BroadCastCommand(server));
+		commandManager.register(commandMetaBroadcast, AdminCommands.createBroadcastCommand(server));
 
 		CommandMeta commandMetaMsg = commandManager.metaBuilder("msg").plugin(this).build();
-		commandManager.register(commandMetaMsg, new MsgCommand(server));
+		commandManager.register(commandMetaMsg, AdminCommands.createMsgCommand(server));
+
+		CommandMeta commandMetaReply = commandManager.metaBuilder("r").aliases("reply").plugin(this).build();
+		commandManager.register(commandMetaReply, AdminCommands.createReplyCommand(server));
 
 		CommandMeta commandMetaSetRanked = commandManager.metaBuilder("ls_set_ranked").plugin(this).build();
 		commandManager.register(commandMetaSetRanked, new SetRankedCommand(server));
@@ -121,6 +124,15 @@ public class Velocity_plugin {
 
 		CommandMeta commandMetaKey = commandManager.metaBuilder("key").plugin(this).build();
 		commandManager.register(commandMetaKey, new KeyCommand());
+
+		CommandMeta commandMetaSend = commandManager.metaBuilder("send").plugin(this).build();
+		commandManager.register(commandMetaSend, AdminCommands.createSendCommand(server));
+
+		CommandMeta commandMetaRankedQueue = commandManager.metaBuilder("rankedqueue").plugin(this).build();
+		commandManager.register(commandMetaRankedQueue, AdminCommands.createRankedQueueCommand(server));
+
+		CommandMeta commandMetaPlayerinfo = commandManager.metaBuilder("playerinfo").plugin(this).build();
+		commandManager.register(commandMetaPlayerinfo, AdminCommands.createPlayerinfoCommand(server, this));
 
         queueSystem = new QueueSystem(server, this); //new version
         server.getEventManager().register(this, queueSystem);
@@ -150,6 +162,13 @@ public class Velocity_plugin {
 		if(s.isEmpty()) return;
 		e.getPlayer().createConnectionRequest(s.get()).connect();
 		newPlayers.remove(e.getPlayer().getUniqueId());
+		server.getScheduler().buildTask(this, () -> {
+			Optional<ServerConnection> opt = e.getPlayer().getCurrentServer();
+			if(opt.isEmpty()) return;
+			if(opt.get().getServer().getServerInfo().getName().contains("limbo")) {
+				e.getPlayer().disconnect(Component.translatable("You have been connected to limbo for too long.").color(RED));
+			}
+		}).delay(5, TimeUnit.MINUTES);
 	}
 
 	@Subscribe
@@ -227,6 +246,13 @@ public class Velocity_plugin {
 			return;
 		}
 
+		if(message1.contains("queue")){
+			String message2 = in.readUTF();
+			if(message2.equals("leave")){
+				QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
+			}
+		}
+
 		if (!(message1.contains("Connect"))) {
 			return;
 		}
@@ -235,28 +261,34 @@ public class Velocity_plugin {
 
 		String message3 = null;
 		try{message3 = in.readUTF();}catch(IllegalStateException e){}
-		boolean connect = true;
-		if (message3 != null && message3.contains("false")) {
-			connect = false;
-		}
-
-    QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 		if (message2.contains("litestrike")) {
+			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			if(message2.contains("ranked")) {
+				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).addPlayerToQueue(backend_conn.getPlayer());
+			}else if ("false".equals(message3)
+					&& QueueSystem.lastGameQueue.get(backend_conn.getPlayer().getUniqueId()) == QueueSystem.queueTypes.litestrike_ranked) {
+				// message3 "false" is only ever sent by the Requeue button (fresh queue joins send "true"),
+				// so send the player back to the ranked queue they came from instead of casual.
 				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike_ranked).addPlayerToQueue(backend_conn.getPlayer());
 			}else {
 				QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(backend_conn.getPlayer());
 			}
 		} else if (message2.contains("knockoff")) {
+			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
             QueueSystem.getQueue(QueueSystem.queueTypes.knockoff).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("crystalblitz")) {
+			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
+		} else if (message2.contains("minesweeper")) {
+			server.getServer("minesweeper").ifPresentOrElse(
+				msserver -> backend_conn.getPlayer().createConnectionRequest(msserver).connect(),
+				() -> backend_conn.getPlayer().sendMessage(text("[QueueSystem] Minesweeper server not found.", NamedTextColor.RED))
+			);
 		} else if (message2.contains("lobby")) {
-			RegisteredServer lobby = server.getServer("lobby").get();
-			backend_conn.getPlayer().createConnectionRequest(lobby).connect();
-			if(connect){
-				QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
-			}
+			server.getServer("lobby").ifPresentOrElse(
+				lobby -> backend_conn.getPlayer().createConnectionRequest(lobby).connect(),
+				() -> backend_conn.getPlayer().sendMessage(text("[QueueSystem] Lobby server not found.", NamedTextColor.RED))
+			);
 		}
 	}
 
@@ -265,6 +297,15 @@ public class Velocity_plugin {
 		Databases.updatePlayerNames(e.getPlayer());
 		Databases.setOnline(e.getPlayer(), true);
 		Friend.allFriends.add(new Friend(e.getPlayer()));
+		if (QueueCommand.findRejoinableServer(e.getPlayer()).isPresent()) {
+			Player returning = e.getPlayer();
+			server.getScheduler().buildTask(this,
+					() -> {
+						if (returning.isActive() && QueueCommand.findRejoinableServer(returning).isPresent()) {
+							returning.sendMessage(translatable("crystalized.generic.queue.rejoin.available").color(YELLOW));
+						}
+					}).delay(5, TimeUnit.SECONDS).schedule();
+		}
 		ArrayList<Object[]> list = Databases.fetchFriendsWithNames(e.getPlayer());
 		if(list == null){
 			return;
@@ -278,117 +319,38 @@ public class Velocity_plugin {
 		}
 	}
 
-	public static boolean is_admin(Player p) {
+	public static boolean is_mod(Player p) {
+		HashMap<String, Object> playerData = Databases.fetchPlayerData(p.getUniqueId());
+		if(playerData.get("rank_id") != null && ((Integer)playerData.get("rank_id") == 1 || (Integer)playerData.get("rank_id") == 2)){
+			return true;
+		}
 		if (p.getUsername().equals("cooltexture")
 				|| p.getUsername().equals("Callum_Is_Bad")
 				|| p.getUsername().equals(".CallumIsBad6502")
 				|| p.getUsername().equals("LadyCat_")
 				|| p.getUsername().equals("___mira___")
+				|| p.getUsername().equals("MISHEROP")
 				|| p.getUsername().equals("Delieve")) {
 			return true;
 		} else {
 			return false;
 		}
 	}
-}
 
-class HubCommand implements SimpleCommand {
-	private RegisteredServer lobby;
-
-	public HubCommand(RegisteredServer lobby) {
-		this.lobby = lobby;
-	}
-
-	@Override
-	public void execute(Invocation invocation) {
-		((Player) invocation.source()).createConnectionRequest(lobby).connect();
-	}
-
-	@Override
-	public boolean hasPermission(Invocation invocation) {
-		return true;
-	}
-}
-
-class MsgCommand implements SimpleCommand {
-	private ProxyServer server;
-
-	public MsgCommand(ProxyServer server) {
-		this.server = server;
-	}
-
-	@Override
-	public void execute(final Invocation invocation) {
-		if (invocation.arguments().length == 0) {
-			return;
-		}
-		String messenger_name = "Console";
-		if (invocation.source() instanceof Player) {
-			messenger_name = ((Player) invocation.source()).getUsername();
-		}
-		Player p = server.getPlayer(invocation.arguments()[0]).orElse(null);
-		if (p == null) {
-			invocation.source().sendMessage(translatable("crystalized.proxy.msg.not_found").color(RED));
-			return;
-		}
-
-		if(!Settings.isAllowed("dms", p, (Player)invocation.source())){
-			invocation.source().sendMessage(translatable("crystalized.proxy.msg.not_allowed", List.of(Component.text(p.getUsername()))).color(RED));
-			return;
-		}
-
-		Component message = text("");
-		for (String arg : invocation.arguments()) {
-			if (arg == invocation.arguments()[0])
-				continue;
-			message = message.append(text(" " + arg));
-		}
-		invocation.source()
-				.sendMessage(text("[").append(translatable("crystalized.generic.you")).append(text(" -> " + p.getUsername() + "] ")).append(message).color(NamedTextColor.AQUA));
-		p.sendMessage(text("[" + messenger_name + " -> ").append(translatable("crystalized.generic.you")).append(text("] ")).append(message).color(NamedTextColor.AQUA));
-	}
-
-	@Override
-	public List<String> suggest(Invocation invocation) {
-		if (invocation.arguments().length == 0) {
-			return server.getAllPlayers().stream().map(player -> player.getUsername()).collect(Collectors.toList());
-		}
-		if (invocation.arguments().length == 1) {
-			return server.getAllPlayers().stream().map(player -> player.getUsername())
-					.filter(name -> name.startsWith(invocation.arguments()[0])).collect(Collectors.toList());
-		}
-		return List.of();
-	}
-
-	@Override
-	public boolean hasPermission(final Invocation invocation) {
-		return true;
-	}
-
-}
-
-class BroadCastCommand implements RawCommand {
-	private ProxyServer server;
-
-	public BroadCastCommand(ProxyServer server) {
-		this.server = server;
-	}
-
-	@Override
-	public void execute(final Invocation invocation) {
-		Component message = translatable("crystalized.generic.broadcast").color(YELLOW);
-		message = message.append(text(invocation.arguments()));
-		message.append(text("\n"));
-		Audience.audience(server.getAllPlayers()).sendMessage(message);
-	}
-
-	@Override
-	public boolean hasPermission(final Invocation invocation) {
-		if (invocation.source() instanceof ConsoleCommandSource) {
+	public static boolean is_admin(Player p) {
+		HashMap<String, Object> playerData = Databases.fetchPlayerData(p.getUniqueId());
+		if(playerData.get("rank_id") != null && ((Integer)playerData.get("rank_id") == 1)){
 			return true;
 		}
-		Player p = (Player) invocation.source();
-		return Velocity_plugin.is_admin(p);
+		if (p.getUsername().equals("cooltexture")
+				|| p.getUsername().equals("LadyCat_")
+				|| p.getUsername().equals("___mira___")
+				|| p.getUsername().equals("MISHEROP")
+				|| p.getUsername().equals("Bonezilord")) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 }
 

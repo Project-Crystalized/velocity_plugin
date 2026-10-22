@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Scanner;
 
 import static gg.crystalized.FriendSystem.server;
+import static net.kyori.adventure.text.Component.translatable;
 
 public class KeyGenCommand implements SimpleCommand {
 
@@ -54,7 +55,7 @@ public class KeyGenCommand implements SimpleCommand {
 
     public static boolean isUnique(String key){
         try {
-            File file = new File(System.getProperty("user.home") + "/databases/active_keys.txt");
+            File file = new File(Databases.dbDir() + "/active_keys.txt");
             file.createNewFile();
             Scanner sc = new Scanner(file);
             while(sc.hasNextLine()){
@@ -73,7 +74,7 @@ public class KeyGenCommand implements SimpleCommand {
 
     public static void addToFile(ArrayList<String> keys){
         try {
-            File file = new File(System.getProperty("user.home") + "/databases/active_keys.txt");
+            File file = new File(Databases.dbDir() + "/active_keys.txt");
             BufferedReader reader = new BufferedReader(new FileReader(file));
 
             String currentLine;
@@ -89,7 +90,7 @@ public class KeyGenCommand implements SimpleCommand {
 
     public static void writeToFile(ArrayList<String> keys){
         try {
-            File file = new File(System.getProperty("user.home") + "/databases/active_keys.txt");
+            File file = new File(Databases.dbDir() + "/active_keys.txt");
             FileWriter writer = new FileWriter(file);
             for (String key : keys) {
                 writer.write(key + "\n");
@@ -136,7 +137,7 @@ class KeyCommand implements SimpleCommand{
 
     public static void deleteKey(String key){
         try {
-            File file = new File(System.getProperty("user.home") + "/databases/active_keys.txt");
+            File file = new File(Databases.dbDir() + "/active_keys.txt");
 
             BufferedReader reader = new BufferedReader(new FileReader(file));
 

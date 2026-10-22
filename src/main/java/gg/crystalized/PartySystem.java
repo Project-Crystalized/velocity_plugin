@@ -194,6 +194,11 @@ class PartyCommand implements SimpleCommand {
 				invocation.source().sendMessage(translatable("crystalized.proxy.friends.not_found", List.of(Component.text(args[1]))).color(RED));
 				return;
 			}
+			if ((args[0].equals("invite") || args[0].equals("inv") || args[0].equals("add"))
+					&& mentioned_player.getUniqueId().equals(executer.getUniqueId())) {
+				invocation.source().sendMessage(text("Forever alone? Not my problem invite denied.").color(RED));
+				return;
+			}
 		}
 
 		Party party = ps.get_party_of(executer);
@@ -239,7 +244,7 @@ class PartyCommand implements SimpleCommand {
 			party.invited.add(args[1]);
 			Component accept = translatable("crystalized.generic.accept").color(GREEN).decoration(BOLD, true).clickEvent(ClickEvent.runCommand("/party join " + executer.getUsername()));
 			mentioned_player.sendMessage(
-					translatable("crystalized.proxy.party.invite.you", List.of(Component.text((executer).getUsername()))).color(TextColor.fromHexString("#f299da")).append(accept));
+					translatable("crystalized.proxy.party.invite.you", List.of(Component.text((executer).getUsername()))).color(TextColor.fromHexString("#f299da")).append(text(" ")).append(accept));
 
 		} else if (args[0].equals("join") || args[0].equals("accept")) {
 			if (party != null) {
@@ -255,7 +260,7 @@ class PartyCommand implements SimpleCommand {
 				executer.sendMessage(translatable("crystalized.proxy.party.invite.not").color(RED));
 				return;
 			}
-			Audience.audience(party_to_join.members).sendMessage(text(mentioned_player.getUsername()).append(translatable("crystalized.proxy.party.join.player")).color(TextColor.fromHexString("#f299da")));
+			Audience.audience(party_to_join.members).sendMessage(text(executer.getUsername()).append(translatable("crystalized.proxy.party.join.player")).color(TextColor.fromHexString("#f299da")));
 			executer.sendMessage(translatable("crystalized.proxy.party.join.you", List.of(text(args[1]))).color(TextColor.fromHexString("#f299da")));
 			party_to_join.members.add(executer);
 			//plugin.que_system.remove_player_from_que(executer);
@@ -283,10 +288,7 @@ class PartyCommand implements SimpleCommand {
 		} else if (args[0].equals("disband")) {
 			Audience.audience(party.members).sendMessage(translatable("crystalized.proxy.party.disband").color(TextColor.fromHexString("#f299da")));
 			ps.partys.remove(party);
-			for (Player p : party.members) {
-                QueueSystem.removeFromAllQueues(executer);
-			}
-
+			party.members.forEach(p -> QueueSystem.removeFromAllQueues(p));
 		} else if (args[0].equals("leave")) {
 			ps.remove_player(executer);
             QueueSystem.removeFromAllQueues(executer);
