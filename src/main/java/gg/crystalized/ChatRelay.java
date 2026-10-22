@@ -7,10 +7,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.ToIntFunction;
 
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
+import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -39,12 +42,23 @@ import net.kyori.adventure.text.format.TextColor;
  * Formatting mirrors LobbyChatRenderer: white rank icon + rank-colored name
  * + ": " + message. Rank data comes from the lobby database with the same
  * semantics as lobby Ranks.getRank (rank_id first, else best pay_rank_id).
+ *
+ * Because velocity relays before the backend validates the message, the
+ * relay sanitizes legacy formatting codes and rate limits itself; ranks are
+ * cached for RANK_TTL_MILLIS, evicted on login/disconnect, and warmed off
+ * the event thread on login.
  */
 public class ChatRelay {
 
 	/** Velocity names of the only two servers whose chat is mirrored. */
 	static final String LOBBY = "lobby";
 	static final String MINESWEEPER = "minesweeper";
+
+	/** How long a cached rank may be reused before it is re-read from the lobby db. */
+	static final long RANK_TTL_MILLIS = 5 * 60 * 1000L;
+
+	/** Minimum time between two relayed chat lines from the same player. */
+	static final long CHAT_COOLDOWN_MILLIS = 1000L;
 
 	private final ProxyServer server;
 
@@ -76,7 +90,20 @@ public class ChatRelay {
 	/** Lower wins, mirrors lobby Ranks priority; rankless is last-resort. */
 	static final int[] PRIORITY = { 10, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
-	static final ConcurrentHashMap<UUID, Integer> rankCache = new ConcurrentHashMap<>();
+	/** A cached rank and when it was read, so it can expire. */
+	record RankEntry(int rankId, long fetchedAt) {
+		boolean isFresh(long now) {
+			return now - fetchedAt < RANK_TTL_MILLIS;
+		}
+	}
+
+	static final ConcurrentHashMap<UUID, RankEntry> rankCache = new ConcurrentHashMap<>();
+
+	/** Last relayed chat timestamp per player, for CHAT_COOLDOWN_MILLIS. */
+	static final ConcurrentHashMap<UUID, Long> lastChatAt = new ConcurrentHashMap<>();
+
+	/** Replaced in tests so rank handling can be exercised without a database. */
+	static ToIntFunction<UUID> rankLoader = ChatRelay::lookupRank;
 
 	/**
 	 * Serializes with full-RGB hex codes in the BungeeCord repeated format
@@ -112,19 +139,18 @@ public class ChatRelay {
 			return;
 		}
 
-		int rankId = getRank(p.getUniqueId());
-		Component line = Component.text(ICON[rankId]).color(NamedTextColor.WHITE)
-			.append(Component.text(" "))
-			.append(Component.text(p.getUsername()).color(TextColor.fromHexString(COLOR[rankId])))
-			.append(Component.text(": "))
-			.append(Component.text(event.getMessage()));
-		String legacy = SECTION_HEX.serialize(line);
+		// Velocity relays before the backend can reject the message, so strip
+		// legacy codes/control characters and throttle here as well.
+		String message = sanitizeMessage(event.getMessage());
+		if (message.isEmpty()) {
+			return;
+		}
+		if (!allowChat(p.getUniqueId(), System.currentTimeMillis())) {
+			return;
+		}
 
-		ByteArrayDataOutput out = ByteStreams.newDataOutput();
-		out.writeUTF("Chat");
-		out.writeUTF(origin);
-		out.writeUTF(legacy);
-		byte[] payload = out.toByteArray();
+		byte[] payload = chatPayload(origin,
+				formatLine(getRank(p.getUniqueId()), p.getUsername(), message));
 
 		for (Player r : server.getAllPlayers()) {
 			String target = r.getCurrentServer()
@@ -144,12 +170,44 @@ public class ChatRelay {
 		}
 	}
 
-	/** Rank id mirror of lobby Ranks.getRank(): rank_id column first, else best pay_rank_id byte. */
+	/**
+	 * Warms the rank cache off the login thread, and drops anything cached
+	 * from the previous session. Without the warm-up the first chat line pays
+	 * for a synchronous sqlite query on the connection's event loop.
+	 */
+	@Subscribe
+	public void onPostLogin(PostLoginEvent event) {
+		UUID uuid = event.getPlayer().getUniqueId();
+		rankCache.remove(uuid);
+		lastChatAt.remove(uuid);
+		server.getScheduler().buildTask(this, () -> getRank(uuid)).schedule();
+	}
+
+	@Subscribe
+	public void onDisconnect(DisconnectEvent event) {
+		UUID uuid = event.getPlayer().getUniqueId();
+		rankCache.remove(uuid);
+		lastChatAt.remove(uuid);
+	}
+
+	/** Rank id for chat formatting, cached for RANK_TTL_MILLIS. */
 	static int getRank(UUID uuid) {
-		Integer cached = rankCache.get(uuid);
-		if (cached != null) {
-			return cached;
+		long now = System.currentTimeMillis();
+		RankEntry cached = rankCache.get(uuid);
+		if (cached != null && cached.isFresh(now)) {
+			return cached.rankId;
 		}
+		RankEntry loaded = rankCache.compute(uuid, (key, old) -> {
+			if (old != null && old.isFresh(now)) {
+				return old;
+			}
+			return new RankEntry(clampRank(rankLoader.applyAsInt(uuid)), now);
+		});
+		return loaded.rankId;
+	}
+
+	/** Reads the rank from the lobby db; failures fall back to rankless. */
+	static int lookupRank(UUID uuid) {
 		int rank = 0;
 		try (Connection conn = DriverManager.getConnection(Databases.LOBBY)) {
 			PreparedStatement prep = conn.prepareStatement(
@@ -157,29 +215,104 @@ public class ChatRelay {
 			prep.setBytes(1, Databases.uuid_to_bytes(uuid));
 			ResultSet set = prep.executeQuery();
 			if (set.next()) {
-				int rankId = set.getInt("rank_id");
-				byte[] payRank = set.getBytes("pay_rank_id");
-				if (rankId != 0) {
-					rank = rankId;
-				} else {
-					int bestPriority = Integer.MAX_VALUE;
-					int bestId = 0;
-					// pay_rank_id is a packed short[] (2 bytes per entry, big endian)
-					for (int i = 0; i + 1 < payRank.length; i += 2) {
-						int id = ((payRank[i] & 0xFF) << 8) | (payRank[i + 1] & 0xFF);
-						if (id < PRIORITY.length && PRIORITY[id] < bestPriority) {
-							bestPriority = PRIORITY[id];
-							bestId = id;
-						}
-					}
-					rank = bestId;
-				}
+				rank = resolveRank(set.getInt("rank_id"), set.getBytes("pay_rank_id"));
 			}
 		} catch (SQLException e) {
 			Velocity_plugin.logger.info("chat relay rank lookup failed: " + e.getMessage());
 		}
-		rank = Math.min(rank, COLOR.length - 1);
-		rankCache.put(uuid, rank);
-		return rank;
+		return clampRank(rank);
+	}
+
+	/** Mirrors lobby Ranks.getRank(): explicit rank_id first, else best paid rank. */
+	static int resolveRank(int rankId, byte[] payRank) {
+		return clampRank(rankId != 0 ? rankId : bestPaidRank(payRank));
+	}
+
+	/** Best rank in the packed pay_rank_id short[] (2 bytes per entry, big endian). */
+	static int bestPaidRank(byte[] payRank) {
+		if (payRank == null) {
+			return 0;
+		}
+		int bestPriority = Integer.MAX_VALUE;
+		int bestId = 0;
+		for (int i = 0; i + 1 < payRank.length; i += 2) {
+			int id = ((payRank[i] & 0xFF) << 8) | (payRank[i + 1] & 0xFF);
+			if (id < PRIORITY.length && PRIORITY[id] < bestPriority) {
+				bestPriority = PRIORITY[id];
+				bestId = id;
+			}
+		}
+		return bestId;
+	}
+
+	static int clampRank(int rank) {
+		return Math.max(0, Math.min(rank, COLOR.length - 1));
+	}
+
+	/**
+	 * Removes legacy formatting codes and control characters. The relayed line
+	 * is rendered as a system message on the receiving end, so an unescaped
+	 * '§' from a modified client could otherwise inject formatting.
+	 */
+	static String sanitizeMessage(String message) {
+		StringBuilder out = new StringBuilder(message.length());
+		for (int i = 0; i < message.length(); i++) {
+			char c = message.charAt(i);
+			if (c == '§') {
+				// Drop the code character too (§c, §l, §x...), not just the marker.
+				if (i + 1 < message.length() && isLegacyCode(message.charAt(i + 1))) {
+					i++;
+				}
+				continue;
+			}
+			if (c < ' ' || c == '\u007F') {
+				continue;
+			}
+			out.append(c);
+		}
+		return out.toString();
+	}
+
+	private static boolean isLegacyCode(char c) {
+		char lower = Character.toLowerCase(c);
+		return (lower >= '0' && lower <= '9') || (lower >= 'a' && lower <= 'f')
+				|| lower == 'k' || lower == 'l' || lower == 'm' || lower == 'n'
+				|| lower == 'o' || lower == 'r' || lower == 'x';
+	}
+
+	/**
+	 * Per-player relay cooldown. Velocity relays before the backend's own
+	 * anti-spam runs, so this is the only limiter that applies to the mirror.
+	 */
+	static boolean allowChat(UUID uuid, long now) {
+		boolean[] allowed = { false };
+		lastChatAt.compute(uuid, (key, last) -> {
+			if (last != null && now - last < CHAT_COOLDOWN_MILLIS) {
+				return last;
+			}
+			allowed[0] = true;
+			return now;
+		});
+		return allowed[0];
+	}
+
+	/** Renders one chat line exactly like the lobby's LobbyChatRenderer. */
+	static String formatLine(int rankId, String username, String message) {
+		int id = clampRank(rankId);
+		Component line = Component.text(ICON[id]).color(NamedTextColor.WHITE)
+			.append(Component.text(" "))
+			.append(Component.text(username).color(TextColor.fromHexString(COLOR[id])))
+			.append(Component.text(": "))
+			.append(Component.text(message));
+		return SECTION_HEX.serialize(line);
+	}
+
+	/** Payload layout shared with the lobby listener and Pumpkin's relay.rs: ["Chat", origin, line]. */
+	static byte[] chatPayload(String origin, String legacyLine) {
+		ByteArrayDataOutput out = ByteStreams.newDataOutput();
+		out.writeUTF("Chat");
+		out.writeUTF(origin);
+		out.writeUTF(legacyLine);
+		return out.toByteArray();
 	}
 }
