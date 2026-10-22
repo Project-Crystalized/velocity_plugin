@@ -280,7 +280,6 @@ public class Velocity_plugin {
 			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			QueueSystem.getQueue(QueueSystem.queueTypes.crystalblitz).addPlayerToQueue(backend_conn.getPlayer());
 		} else if (message2.contains("minesweeper")) {
-			QueueSystem.removeFromAllQueues(backend_conn.getPlayer());
 			server.getServer("minesweeper").ifPresentOrElse(
 				msserver -> backend_conn.getPlayer().createConnectionRequest(msserver).connect(),
 				() -> backend_conn.getPlayer().sendMessage(text("[QueueSystem] Minesweeper server not found.", NamedTextColor.RED))
