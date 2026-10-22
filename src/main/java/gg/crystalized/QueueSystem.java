@@ -162,6 +162,7 @@ class GameQueue{
                 switch (timer.get().get()) {
                     case 3,2,1 -> {
                         for (Player p : players) {
+                            p.playSound()
                             //TODO I would play a sound here but velocity doesn't support playing sounds for some reason - Callum
                         }
                     }

@@ -18,7 +18,8 @@ public class KeyGenCommand implements SimpleCommand {
     @Override
     public void execute(Invocation invocation) {
         if(!(invocation.source() instanceof ConsoleCommandSource)){
-            invocation.source().sendRichMessage("<dark_red>You don't have permission to do this.</dark_red>");
+            Player p = (Player) invocation.source();
+            p.sendMessage(translatable("crystalized.proxy.key.no_perms").color(RED));
             return;
         }
         int amount = Integer.parseInt(invocation.arguments()[0]);
@@ -108,17 +109,17 @@ class KeyCommand implements SimpleCommand{
             return;
         }
         if(invocation.arguments().length == 0){
-            invocation.source().sendRichMessage("<dark_aqua>Please input your access key.</dark_aqua>");
+            p.sendMessage(translatable(translatable("crystalized.proxy.key.input").color(AQUA));
             return;
         }
         String key = invocation.arguments()[0].replace("\n", "");
         if(KeyGenCommand.isUnique(key)){
-            invocation.source().sendRichMessage("<dark_red>This key doesn't exist or has already been used.</dark_red>");
+            p.sendMessage(translatable("crystalized.proxy.key.doesnt_exist").color(RED));
             return;
         }
 
         if(Databases.isPlayerInDatabase(p.getUniqueId())){
-            invocation.source().sendRichMessage("<dark_red>You already have access.</dark_red>");
+            p.sendMessage(translatable("crystalized.proxy.key.already_access").color(RED));
             return;
         }
         deleteKey(key);
