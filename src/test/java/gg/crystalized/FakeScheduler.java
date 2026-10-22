@@ -10,14 +10,14 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import com.velocitypowered.api.scheduler.Scheduler;
 
 public class FakeScheduler implements Scheduler {
-	public record CapturedTask(Runnable runnable, long repeat, TimeUnit unit) {
+	public record CapturedTask(Object plugin, Runnable runnable, long repeat, TimeUnit unit) {
 	}
 
 	public final List<CapturedTask> tasks = new ArrayList<>();
 
 	@Override
 	public TaskBuilder buildTask(Object plugin, Runnable runnable) {
-		return new FakeTaskBuilder(runnable);
+		return new FakeTaskBuilder(plugin, runnable);
 	}
 
 	@Override
@@ -36,9 +36,12 @@ public class FakeScheduler implements Scheduler {
 	}
 
 	private class FakeTaskBuilder implements TaskBuilder {
+		private final Object plugin;
 		private final Runnable runnable;
+		private boolean recorded;
 
-		FakeTaskBuilder(Runnable runnable) {
+		FakeTaskBuilder(Object plugin, Runnable runnable) {
+			this.plugin = plugin;
 			this.runnable = runnable;
 		}
 
@@ -49,7 +52,7 @@ public class FakeScheduler implements Scheduler {
 
 		@Override
 		public TaskBuilder repeat(long time, TimeUnit unit) {
-			FakeScheduler.this.tasks.add(new CapturedTask(runnable, time, unit));
+			record(time, unit);
 			return this;
 		}
 
@@ -65,7 +68,17 @@ public class FakeScheduler implements Scheduler {
 
 		@Override
 		public ScheduledTask schedule() {
+			// one-shot tasks are captured too, so tests can assert who owns them
+			record(0L, null);
 			return null;
+		}
+
+		private void record(long time, TimeUnit unit) {
+			if (recorded) {
+				return;
+			}
+			recorded = true;
+			FakeScheduler.this.tasks.add(new CapturedTask(plugin, runnable, time, unit));
 		}
 	}
 }

@@ -89,7 +89,7 @@ public class Velocity_plugin {
 		server.getChannelRegistrar().register(CRYSTALIZED_ESSENTIALS);
 		server.getChannelRegistrar().register(SetRankedCommand.LS_CHANNEL);
 
-		server.getEventManager().register(this, new ChatRelay(server));
+		server.getEventManager().register(this, new ChatRelay(this, server));
 
 		this.party_system = new PartySystem(server, this);
 		this.friend_system = new FriendSystem(server, this);

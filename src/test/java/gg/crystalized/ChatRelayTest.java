@@ -2,22 +2,34 @@ package gg.crystalized;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+
+import com.velocitypowered.api.event.connection.PostLoginEvent;
+import com.velocitypowered.api.event.player.PlayerChatEvent;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.proxy.ServerConnection;
+import com.velocitypowered.api.proxy.server.ServerInfo;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
 
 class ChatRelayTest {
 
@@ -26,38 +38,124 @@ class ChatRelayTest {
 	void resetState() {
 		ChatRelay.rankCache.clear();
 		ChatRelay.lastChatAt.clear();
+		ChatRelay.clock = System::currentTimeMillis;
 		ChatRelay.rankLoader = ChatRelay::lookupRank;
+		Velocity_plugin.logger = Mocks.mock(Logger.class);
 	}
 
 	// --- formatting -----------------------------------------------------
 
 	@Test
-	void formatsRanklessLineLikeTheLobby() {
-		String line = ChatRelay.formatLine(0, "Steve", "hello");
-		Component parsed = LegacyComponentSerializer.legacySection().deserialize(line);
+	void formatsRanklessLineWithoutIcon() {
+		Component line = ChatRelay.formatLine(0, "Steve", "hello");
 
-		// Ranks.rankless has no icon, so the line starts with the separator space.
-		assertEquals(" Steve: hello", plainText(parsed));
-		assertEquals(TextColor.fromHexString("#a1a1a1"), colorOf(parsed, "Steve"));
+		assertEquals("Steve: hello", plainText(line));
+		assertEquals(TextColor.fromHexString("#a1a1a1"), colorOf(line, "Steve"));
 	}
 
 	@Test
 	void formatsRankedLineWithIconAndRankColor() {
-		String line = ChatRelay.formatLine(1, "Steve", "hello");
+		Component line = ChatRelay.formatLine(1, "Steve", "hello");
 
-		// Wire format must stay the unusual repeated hex form; Pumpkin's parser
-		// only understands that one.
-		assertTrue(line.contains("§x§b§a§1§5§6§0Steve"), line);
-
-		Component parsed = LegacyComponentSerializer.legacySection().deserialize(line);
-		assertEquals("\uE301 Steve: hello", plainText(parsed));
-		assertEquals(TextColor.fromHexString("#ba1560"), colorOf(parsed, "Steve"));
+		assertEquals("\uE301 Steve: hello", plainText(line));
+		assertEquals(TextColor.fromHexString("#ba1560"), colorOf(line, "Steve"));
 	}
 
 	@Test
 	void clampsOutOfRangeRankIds() {
 		assertEquals(ChatRelay.formatLine(9, "A", "b"), ChatRelay.formatLine(42, "A", "b"));
 		assertEquals(ChatRelay.formatLine(0, "A", "b"), ChatRelay.formatLine(-3, "A", "b"));
+	}
+
+	// --- relay ----------------------------------------------------------
+
+	@Test
+	void relaysChatToBothServersAndDeniesTheBackendBroadcast() {
+		long[] now = { 10_000L };
+		ChatRelay.clock = () -> now[0];
+		ChatRelay.rankLoader = uuid -> 0;
+
+		List<Object[]> senderCalls = new ArrayList<>();
+		List<Object[]> lobbyCalls = new ArrayList<>();
+		Player sender = playerOn("minesweeper", senderCalls, "Steve");
+		Player lobbyPlayer = playerOn("lobby", lobbyCalls, "Alex");
+		ProxyServer proxy = Mocks.mock(ProxyServer.class, Map.of(
+				"getAllPlayers", List.of(lobbyPlayer, sender),
+				"getScheduler", new FakeScheduler()));
+		ChatRelay relay = new ChatRelay(proxy, proxy);
+		PlayerChatEvent event = new PlayerChatEvent(sender, "hello");
+
+		relay.onPlayerChat(event);
+
+		assertFalse(event.getResult().isAllowed());
+		assertEquals(1, countCalls(lobbyCalls, "sendMessage"));
+		// the sender sees the same proxy line instead of a backend broadcast
+		assertEquals(1, countCalls(senderCalls, "sendMessage"));
+
+		Component remote = sentMessage(lobbyCalls);
+		assertEquals("[minesweeper] Steve: hello", plainText(remote));
+		assertEquals(TextColor.fromHexString("#a1a1a1"), colorOf(remote, "Steve"));
+		assertEquals(NamedTextColor.DARK_GRAY, colorOf(remote, "[minesweeper] "));
+		// same-server viewers, including the sender, get no origin tag
+		assertEquals("Steve: hello", plainText(sentMessage(senderCalls)));
+
+		// throttled: denied and dropped silently, no extra message to the sender
+		now[0] += 49;
+		event = new PlayerChatEvent(sender, "hello");
+		relay.onPlayerChat(event);
+		assertFalse(event.getResult().isAllowed());
+		assertEquals(1, countCalls(lobbyCalls, "sendMessage"));
+		assertEquals(1, countCalls(senderCalls, "sendMessage"));
+
+		// one proxy tick later it goes through again
+		now[0] += 1;
+		relay.onPlayerChat(new PlayerChatEvent(sender, "hello"));
+		assertEquals(2, countCalls(lobbyCalls, "sendMessage"));
+		assertEquals(2, countCalls(senderCalls, "sendMessage"));
+	}
+
+	@Test
+	void leavesNonMirroredServersAlone() {
+		List<Object[]> senderCalls = new ArrayList<>();
+		List<Object[]> lobbyCalls = new ArrayList<>();
+		Player sender = playerOn("smp", senderCalls, "Steve");
+		Player lobbyPlayer = playerOn("lobby", lobbyCalls, "Alex");
+		ProxyServer proxy = Mocks.mock(ProxyServer.class, Map.of(
+				"getAllPlayers", List.of(lobbyPlayer),
+				"getScheduler", new FakeScheduler()));
+		ChatRelay relay = new ChatRelay(proxy, proxy);
+		PlayerChatEvent event = new PlayerChatEvent(sender, "hello");
+
+		relay.onPlayerChat(event);
+
+		assertTrue(event.getResult().isAllowed());
+		assertEquals(0, countCalls(lobbyCalls, "sendMessage"));
+		assertEquals(0, countCalls(senderCalls, "sendMessage"));
+	}
+
+	@Test
+	void respectsEarlierDenials() {
+		List<Object[]> lobbyCalls = new ArrayList<>();
+		Player sender = playerOn("lobby", new ArrayList<>(), "Steve");
+		Player lobbyPlayer = playerOn("lobby", lobbyCalls, "Alex");
+		ProxyServer proxy = Mocks.mock(ProxyServer.class, Map.of(
+				"getAllPlayers", List.of(lobbyPlayer),
+				"getScheduler", new FakeScheduler()));
+		ChatRelay relay = new ChatRelay(proxy, proxy);
+		PlayerChatEvent event = new PlayerChatEvent(sender, "hello");
+		event.setResult(PlayerChatEvent.ChatResult.denied());
+
+		relay.onPlayerChat(event);
+
+		assertEquals(0, countCalls(lobbyCalls, "sendMessage"));
+	}
+
+	@Test
+	void logSafeStripsControlCharacters() {
+		assertEquals("abc", ChatRelay.logSafe("a\nb\u0000c\u007F"));
+		assertEquals("ab", ChatRelay.logSafe("a\u2028b\u2029"));
+		// section signs are literal chat text, not log control characters
+		assertEquals("§c hi", ChatRelay.logSafe("§c hi"));
 	}
 
 	// --- rank resolution ------------------------------------------------
@@ -85,51 +183,23 @@ class ChatRelayTest {
 		assertEquals(7, ChatRelay.bestPaidRank(new byte[] { 0, 7, 0 }));
 	}
 
-	@Test
-	void copyOfTheLobbyRankPriorities() {
-		assertEquals(10, ChatRelay.PRIORITY[0]);
-		for (int id = 1; id < ChatRelay.PRIORITY.length; id++) {
-			assertEquals(id, ChatRelay.PRIORITY[id]);
-		}
-	}
-
-	// --- sanitizing / throttling ----------------------------------------
-
-	@Test
-	void stripsLegacyCodesAndControlCharacters() {
-		assertEquals("hi there", ChatRelay.sanitizeMessage("hi §cthere"));
-		assertEquals("abc", ChatRelay.sanitizeMessage("a\u0000b\nc\u007F"));
-		assertEquals("hi 😀", ChatRelay.sanitizeMessage("hi 😀"));
-		assertEquals("", ChatRelay.sanitizeMessage("§c§l"));
-		// whole hex sequences go too
-		assertEquals("hi", ChatRelay.sanitizeMessage("§x§b§a§1§5§6§0hi"));
-		// a marker not followed by a code only loses the marker
-		assertEquals("100 off", ChatRelay.sanitizeMessage("100§ off"));
-	}
+	// --- throttling -----------------------------------------------------
 
 	@Test
 	void throttlesRepeatedChatPerPlayer() {
 		UUID player = UUID.randomUUID();
 
 		assertTrue(ChatRelay.allowChat(player, 1_000L));
-		assertFalse(ChatRelay.allowChat(player, 1_500L));
-		assertFalse(ChatRelay.allowChat(player, 1_999L));
-		assertTrue(ChatRelay.allowChat(player, 2_000L));
+		assertFalse(ChatRelay.allowChat(player, 1_049L));
+		assertTrue(ChatRelay.allowChat(player, 1_050L));
+		assertFalse(ChatRelay.allowChat(player, 1_099L));
+		assertTrue(ChatRelay.allowChat(player, 1_100L));
 
 		// other players are unaffected
-		assertTrue(ChatRelay.allowChat(UUID.randomUUID(), 1_500L));
+		assertTrue(ChatRelay.allowChat(UUID.randomUUID(), 1_049L));
 	}
 
 	// --- rank cache -----------------------------------------------------
-
-	@Test
-	void rankEntriesExpireAtTheTtl() {
-		ChatRelay.RankEntry entry = new ChatRelay.RankEntry(1, 5_000L);
-
-		assertTrue(entry.isFresh(5_000L));
-		assertTrue(entry.isFresh(5_000L + ChatRelay.RANK_TTL_MILLIS - 1));
-		assertFalse(entry.isFresh(5_000L + ChatRelay.RANK_TTL_MILLIS));
-	}
 
 	@Test
 	void freshCacheEntryAvoidsTheLoader() {
@@ -162,20 +232,42 @@ class ChatRelayTest {
 		assertEquals(1, loads.get());
 	}
 
-	// --- payload framing ------------------------------------------------
-
 	@Test
-	void payloadFramingMatchesTheBackendReaders() throws Exception {
-		byte[] payload = ChatRelay.chatPayload("minesweeper", "§x§b§a§1§5§6§0Steve: hi");
+	void rankPrefetchIsScheduledByTheOwningPlugin() {
+		FakeScheduler scheduler = new FakeScheduler();
+		ProxyServer proxy = Mocks.mock(ProxyServer.class, Map.of("getScheduler", scheduler));
+		Object plugin = new Object();
+		ChatRelay relay = new ChatRelay(plugin, proxy);
+		Player player = Mocks.mock(Player.class, Map.of("getUniqueId", UUID.randomUUID()));
 
-		DataInputStream in = new DataInputStream(new ByteArrayInputStream(payload));
-		assertEquals("Chat", in.readUTF());
-		assertEquals("minesweeper", in.readUTF());
-		assertEquals("§x§b§a§1§5§6§0Steve: hi", in.readUTF());
-		assertEquals(0, in.available());
+		relay.onPostLogin(new PostLoginEvent(player));
+
+		assertEquals(1, scheduler.tasks.size());
+		assertSame(plugin, scheduler.tasks.get(0).plugin());
 	}
 
 	// --- helpers --------------------------------------------------------
+
+	static Player playerOn(String server, List<Object[]> calls, String username) {
+		ServerConnection connection = Mocks.mock(ServerConnection.class,
+				Map.of("getServerInfo", new ServerInfo(server, new InetSocketAddress("127.0.0.1", 25565))));
+		return Mocks.recording(Player.class, calls, Map.of(
+				"getUniqueId", UUID.randomUUID(),
+				"getUsername", username,
+				"getCurrentServer", Optional.of(connection)));
+	}
+
+	static Component sentMessage(List<Object[]> calls) {
+		Object[] call = calls.stream()
+			.filter(c -> c[0].equals("sendMessage"))
+			.findFirst()
+			.orElseThrow(() -> new AssertionError("no message was sent"));
+		return (Component) ((Object[]) call[1])[0];
+	}
+
+	static long countCalls(List<Object[]> calls, String method) {
+		return calls.stream().filter(call -> call[0].equals(method)).count();
+	}
 
 	static byte[] paid(int... ids) {
 		byte[] packed = new byte[ids.length * 2];
