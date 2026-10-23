@@ -25,16 +25,14 @@ import net.kyori.adventure.text.format.TextColor;
  * Cross-server chat mirror, strictly between the lobby and the minesweeper
  * server. Chat on any other backend (game servers, smp, limbo) is untouched.
  *
- * The proxy is the only place every chat line passes through, and it can talk
- * to every client directly, so there is no backend plumbing at all: the event
- * is denied (the backend never broadcasts its own version) and the finished
- * component is sent to every player in the pair. Clients already render proxy
- * messages on both Paper and Pumpkin - the queue and friend notices use the
- * same path.
+ * Velocity cannot cancel or rewrite signed chat since 1.19.1: doing so makes
+ * the proxy disconnect the player with an illegal-protocol-state error. This
+ * listener therefore leaves the event alone. The origin backend broadcasts to
+ * its own players as usual; the proxy only mirrors the finished component to
+ * the other mirrored server.
  *
- * Because the backend's validation no longer runs, this listener owns the
- * rate limit. Rank data is cached for RANK_TTL_MILLIS, evicted on
- * login/disconnect, and warmed off the event thread on login.
+ * Rank data is cached for RANK_TTL_MILLIS, evicted on login/disconnect, and
+ * warmed off the event thread on login.
  */
 public class ChatRelay {
 
@@ -43,7 +41,7 @@ public class ChatRelay {
 	static final String MINESWEEPER = "minesweeper";
 
 	static final long RANK_TTL_MILLIS = 5 * 60 * 1000L;
-	/** One message per proxy tick; extra lines are dropped silently. */
+	/** One cross-server mirror per proxy tick; extra lines still reach the origin server. */
 	static final long CHAT_COOLDOWN_MILLIS = 50L;
 
 	static final String[] COLOR = {
@@ -105,7 +103,6 @@ public class ChatRelay {
 		if (!isMirrored(origin)) {
 			return;
 		}
-		event.setResult(PlayerChatEvent.ChatResult.denied());
 
 		String message = event.getMessage();
 		if (message.isBlank()) {
@@ -121,8 +118,8 @@ public class ChatRelay {
 		Component remoteLine = Component.text("[" + origin + "] ", NamedTextColor.DARK_GRAY).append(line);
 		for (Player r : server.getAllPlayers()) {
 			String target = serverName(r);
-			if (isMirrored(target)) {
-				r.sendMessage(target.equals(origin) ? line : remoteLine);
+			if (isMirrored(target) && !target.equals(origin)) {
+				r.sendMessage(remoteLine);
 			}
 		}
 		Velocity_plugin.logger.info("(" + origin + ") " + p.getUsername() + ": " + logSafe(message));

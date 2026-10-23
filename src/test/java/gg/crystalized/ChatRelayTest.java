@@ -70,7 +70,7 @@ class ChatRelayTest {
 	// --- relay ----------------------------------------------------------
 
 	@Test
-	void relaysChatToBothServersAndDeniesTheBackendBroadcast() {
+	void relaysChatToOtherServerWithoutCancellingBackendBroadcast() {
 		long[] now = { 10_000L };
 		ChatRelay.clock = () -> now[0];
 		ChatRelay.rankLoader = uuid -> 0;
@@ -87,31 +87,29 @@ class ChatRelayTest {
 
 		relay.onPlayerChat(event);
 
-		assertFalse(event.getResult().isAllowed());
+		assertTrue(event.getResult().isAllowed());
 		assertEquals(1, countCalls(lobbyCalls, "sendMessage"));
-		// the sender sees the same proxy line instead of a backend broadcast
-		assertEquals(1, countCalls(senderCalls, "sendMessage"));
+		// the origin backend broadcasts to its own players; the proxy only mirrors remotely
+		assertEquals(0, countCalls(senderCalls, "sendMessage"));
 
 		Component remote = sentMessage(lobbyCalls);
 		assertEquals("[minesweeper] Steve: hello", plainText(remote));
 		assertEquals(TextColor.fromHexString("#a1a1a1"), colorOf(remote, "Steve"));
 		assertEquals(NamedTextColor.DARK_GRAY, colorOf(remote, "[minesweeper] "));
-		// same-server viewers, including the sender, get no origin tag
-		assertEquals("Steve: hello", plainText(sentMessage(senderCalls)));
 
-		// throttled: denied and dropped silently, no extra message to the sender
+		// throttled: the mirror is dropped, but the origin backend still broadcasts
 		now[0] += 49;
 		event = new PlayerChatEvent(sender, "hello");
 		relay.onPlayerChat(event);
-		assertFalse(event.getResult().isAllowed());
+		assertTrue(event.getResult().isAllowed());
 		assertEquals(1, countCalls(lobbyCalls, "sendMessage"));
-		assertEquals(1, countCalls(senderCalls, "sendMessage"));
+		assertEquals(0, countCalls(senderCalls, "sendMessage"));
 
-		// one proxy tick later it goes through again
+		// one proxy tick later the mirror goes through again
 		now[0] += 1;
 		relay.onPlayerChat(new PlayerChatEvent(sender, "hello"));
 		assertEquals(2, countCalls(lobbyCalls, "sendMessage"));
-		assertEquals(2, countCalls(senderCalls, "sendMessage"));
+		assertEquals(0, countCalls(senderCalls, "sendMessage"));
 	}
 
 	@Test
