@@ -109,14 +109,27 @@ public class QueueSystem {
         return null;
     }
 
-    public static void removeFromAllQueues(Player p) {
+    public static boolean isInAnyQueue(Player p) {
         for (GameQueue q : queues) {
-            q.removePlayerToQueue(p);
+            if (q.players.contains(p)) {
+                return true;
+            }
         }
+        return false;
+    }
+
+    public static void notifyQueueLeave(Player p) {
         ByteArrayDataOutput out = ByteStreams.newDataOutput();
         out.writeUTF("queue");
         out.writeUTF("leave");
         if(p.getCurrentServer().isPresent()) p.getCurrentServer().get().sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+    }
+
+    public static void removeFromAllQueues(Player p) {
+        for (GameQueue q : queues) {
+            q.removePlayerToQueue(p);
+        }
+        notifyQueueLeave(p);
     }
 
     @Subscribe
@@ -385,16 +398,17 @@ class GameQueue{
             if (!target.available.equals(QueueSystem.ServerStatus.ONLINE_AVAILABLE)) {
                 continue;
             }
-            List<Player> sent = new ArrayList<>();
-            CompletableFuture<ConnectionRequestBuilder.Result> future = null;
-            for (Player p : players) {
-                if (future == null) future = p.createConnectionRequest(target.server).connect();
-                else p.createConnectionRequest(target.server).connect();
-                sent.add(p);
-            }
+            List<Player> sent = new ArrayList<>(players);
             players.removeAll(sent);
             for (Player p : sent) {
                 QueueSystem.lastGameQueue.put(p.getUniqueId(), type);
+                QueueSystem.notifyQueueLeave(p);
+            }
+            CompletableFuture<ConnectionRequestBuilder.Result> future = null;
+            for (Player p : sent) {
+                CompletableFuture<ConnectionRequestBuilder.Result> connectFuture =
+                        p.createConnectionRequest(target.server).connect();
+                if (future == null) future = connectFuture;
             }
             sendAdditionalMessage(target, type, future);
             return;

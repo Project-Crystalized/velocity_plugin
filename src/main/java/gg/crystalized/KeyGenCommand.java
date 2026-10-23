@@ -13,6 +13,8 @@ import java.util.Scanner;
 
 import static gg.crystalized.FriendSystem.server;
 import static net.kyori.adventure.text.Component.translatable;
+import static net.kyori.adventure.text.format.NamedTextColor.AQUA;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 public class KeyGenCommand implements SimpleCommand {
 
@@ -110,7 +112,7 @@ class KeyCommand implements SimpleCommand{
             return;
         }
         if(invocation.arguments().length == 0){
-            p.sendMessage(translatable(translatable("crystalized.proxy.key.input").color(AQUA));
+            p.sendMessage(translatable("crystalized.proxy.key.input").color(AQUA));
             return;
         }
         String key = invocation.arguments()[0].replace("\n", "");

@@ -156,6 +156,7 @@ public class Velocity_plugin {
 
 	@Subscribe
 	public void onPostConnect(ServerPostConnectEvent e){
+		syncQueueState(e.getPlayer());
 		if(!newPlayers.contains(e.getPlayer().getUniqueId())) return;
 		Databases.deletePlayerData(e.getPlayer());
 		Databases.deleteSettings(e.getPlayer());
@@ -170,6 +171,18 @@ public class Velocity_plugin {
 				e.getPlayer().disconnect(Component.translatable("You have been connected to limbo for too long.").color(RED));
 			}
 		}).delay(5, TimeUnit.MINUTES);
+	}
+
+	private static void syncQueueState(Player p) {
+		p.getCurrentServer().ifPresent(conn -> {
+			if (!conn.getServer().getServerInfo().getName().equals("lobby")) {
+				return;
+			}
+			ByteArrayDataOutput out = ByteStreams.newDataOutput();
+			out.writeUTF("queue");
+			out.writeUTF(QueueSystem.isInAnyQueue(p) ? "enter" : "leave");
+			conn.sendPluginMessage(Velocity_plugin.CRYSTAL_CHANNEL, out.toByteArray());
+		});
 	}
 
 	@Subscribe

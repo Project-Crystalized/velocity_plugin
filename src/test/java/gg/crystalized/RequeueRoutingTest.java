@@ -21,12 +21,14 @@ import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.proxy.ConnectionRequestBuilder;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.ChannelMessageSource;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import com.velocitypowered.api.proxy.server.ServerInfo;
 
 class RequeueRoutingTest {
 	ProxyServer proxy;
@@ -40,7 +42,7 @@ class RequeueRoutingTest {
 		FakeScheduler scheduler = new FakeScheduler();
 		proxy = Mocks.mock(ProxyServer.class,
 				Map.of("getAllServers", List.of(), "getScheduler", scheduler, "getCommandManager",
-						Mocks.mock(CommandManager.class)));
+						Mocks.mock(CommandManager.class), "getServer", Optional.empty()));
 		new QueueSystem(proxy, null);
 		for (QueueSystem.queueTypes type : new QueueSystem.queueTypes[] { QueueSystem.queueTypes.litestrike,
 				QueueSystem.queueTypes.litestrike_ranked }) {
@@ -191,5 +193,90 @@ class RequeueRoutingTest {
 		awaitMessages(sent);
 		assertEquals(1, sent.size());
 		assertEquals("ranked_off", decodePluginMessage(sentBytes(sent, 0))[0]);
+	}
+
+	Player playerOnLobby(List<Object[]> sent) {
+		RegisteredServer lobby = Mocks.mock(RegisteredServer.class,
+				Map.of("getServerInfo", new ServerInfo("lobby", new java.net.InetSocketAddress("127.0.0.1", 25565))));
+		ServerConnection connection = Mocks.recording(ServerConnection.class, sent, Map.of("getServer", lobby));
+		return Mocks.mock(Player.class, Map.of("getUniqueId", UUID.randomUUID(), "isActive", true,
+				"getCurrentServer", Optional.of(connection)));
+	}
+
+	Player connectablePlayerOnLobby(List<Object[]> sent) {
+		RegisteredServer lobby = Mocks.mock(RegisteredServer.class,
+				Map.of("getServerInfo", new ServerInfo("lobby", new java.net.InetSocketAddress("127.0.0.1", 25565))));
+		ServerConnection connection = Mocks.recording(ServerConnection.class, sent, Map.of("getServer", lobby));
+		ConnectionRequestBuilder.Result result = Mocks.mock(ConnectionRequestBuilder.Result.class,
+				Map.of("isSuccessful", true));
+		ConnectionRequestBuilder builder = Mocks.mock(ConnectionRequestBuilder.class,
+				Map.of("connect", CompletableFuture.completedFuture(result)));
+		return Mocks.mock(Player.class, Map.of("getUniqueId", UUID.randomUUID(), "isActive", true,
+				"getCurrentServer", Optional.of(connection), "createConnectionRequest", builder));
+	}
+
+	static String[] decodeQueueMessage(byte[] data) {
+		ByteArrayDataInput in = ByteStreams.newDataInput(data);
+		return new String[] { in.readUTF(), in.readUTF() };
+	}
+
+	static byte[] queueMessageSent(List<Object[]> sent) {
+		for (Object[] call : sent) {
+			if (call[0].equals("sendPluginMessage")) {
+				return (byte[]) ((Object[]) call[1])[1];
+			}
+		}
+		return null;
+	}
+
+	@Test
+	void lobbyJoinSendsEnterWhenStillQueued() {
+		List<Object[]> sent = new ArrayList<>();
+		Player p = playerOnLobby(sent);
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(p);
+		sent.clear();
+
+		plugin.onPostConnect(new ServerPostConnectEvent(p, null));
+
+		String[] message = decodeQueueMessage(queueMessageSent(sent));
+		assertEquals("queue", message[0]);
+		assertEquals("enter", message[1]);
+	}
+
+	@Test
+	void lobbyJoinSendsLeaveWhenNotQueued() {
+		List<Object[]> sent = new ArrayList<>();
+		Player p = playerOnLobby(sent);
+
+		plugin.onPostConnect(new ServerPostConnectEvent(p, null));
+
+		String[] message = decodeQueueMessage(queueMessageSent(sent));
+		assertEquals("queue", message[0]);
+		assertEquals("leave", message[1]);
+	}
+
+	@Test
+	void queuePopSendsLeaveToCurrentServer() {
+		List<Object[]> sent = new ArrayList<>();
+		Player p = connectablePlayerOnLobby(sent);
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(p);
+		sent.clear();
+
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike)
+				.sendAllPlayersToServer(QueueSystem.queueTypes.litestrike);
+
+		String[] message = decodeQueueMessage(queueMessageSent(sent));
+		assertEquals("queue", message[0]);
+		assertEquals("leave", message[1]);
+	}
+
+	@Test
+	void minesweeperNpcPreservesLitestrikeQueue() {
+		Player p = player();
+		QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).addPlayerToQueue(p);
+
+		connectMessage(p, "minesweeper", "false");
+
+		assertTrue(QueueSystem.getQueue(QueueSystem.queueTypes.litestrike).players.contains(p));
 	}
 }
