@@ -359,8 +359,7 @@ public class Velocity_plugin {
 		if (p.getUsername().equals("cooltexture")
 				|| p.getUsername().equals("LadyCat_")
 				|| p.getUsername().equals("___mira___")
-				|| p.getUsername().equals("MISHEROP")
-				|| p.getUsername().equals("Bonezilord")) {
+				|| p.getUsername().equals("ZestyZaneee")) {
 			return true;
 		} else {
 			return false;
